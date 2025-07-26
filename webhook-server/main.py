@@ -62,13 +62,13 @@ async def receive_webhook(
     body = await request.body()
     
     # Parse JSON payload
-    if body.startswith('{'):
+    if body.startswith(b'{'):
         try:
-            payload = json.loads(body)
+            payload = json.loads(body.decode('utf-8'))
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON")
     else:
-        payload = {'message': body}
+        payload = {'message': body.decode('utf-8')}
     
     user = webhook_users[webhook_id]
     
