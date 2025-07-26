@@ -1,0 +1,9 @@
+version: "2"
+authtoken: 
+tunnels:
+  webhook-server:
+    addr: webhook-server:3001
+    proto: http
+    schemes: [https, http]
+    inspect: true
+web_addr: 0.0.0.0:4040
