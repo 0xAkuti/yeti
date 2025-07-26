@@ -20,7 +20,6 @@ contract WebhookOracleTest is Test {
 
     function test_InitialState() public view {
         assertEq(oracle.owner(), owner);
-        assertEq(oracle.alertCount(), 0);
         assertTrue(oracle.hasAnyRole(owner, oracle.SUBMITTER_ROLE()));
     }
 
@@ -30,9 +29,7 @@ contract WebhookOracleTest is Test {
         
         oracle.submitAlert(alertId, action);
         
-        assertEq(oracle.alertCount(), 1);
-        
-        WebhookOracle.AlertData memory alert = oracle.getAlert(0);
+        WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
         assertEq(alert.alertId, alertId);
         assertEq(alert.action, action);
         assertTrue(alert.timestamp > 0);
@@ -45,7 +42,9 @@ contract WebhookOracleTest is Test {
         vm.prank(user1);
         oracle.submitAlert("test_alert", "test_action");
         
-        assertEq(oracle.alertCount(), 1);
+        WebhookOracle.AlertData memory alert = oracle.getAlert("test_alert");
+        assertEq(alert.alertId, "test_alert");
+        assertEq(alert.action, "test_action");
     }
 
     function test_RemoveAuthorizedSubmitter() public {
@@ -64,23 +63,20 @@ contract WebhookOracleTest is Test {
         oracle.submitAlert("test_alert", "test_action");
     }
 
-    function test_GetLatestAlert() public {
-        oracle.submitAlert("alert_1", "action_1");
-        oracle.submitAlert("alert_2", "action_2");
-        
-        WebhookOracle.AlertData memory latest = oracle.getLatestAlert();
-        assertEq(latest.alertId, "alert_2");
-        assertEq(latest.action, "action_2");
+    function test_GetNonExistentAlert() public view {
+        WebhookOracle.AlertData memory alert = oracle.getAlert("non_existent");
+        assertEq(alert.alertId, "");
+        assertEq(alert.action, "");
+        assertEq(alert.timestamp, 0);
     }
 
-    function test_GetAllAlerts() public {
+    function test_OverwriteAlert() public {
         oracle.submitAlert("alert_1", "action_1");
-        oracle.submitAlert("alert_2", "action_2");
+        oracle.submitAlert("alert_1", "action_2");
         
-        WebhookOracle.AlertData[] memory allAlerts = oracle.getAllAlerts();
-        assertEq(allAlerts.length, 2);
-        assertEq(allAlerts[0].alertId, "alert_1");
-        assertEq(allAlerts[1].alertId, "alert_2");
+        WebhookOracle.AlertData memory alert = oracle.getAlert("alert_1");
+        assertEq(alert.alertId, "alert_1");
+        assertEq(alert.action, "action_2");
     }
 
     function test_AlertSubmittedEvent() public {
@@ -88,7 +84,7 @@ contract WebhookOracleTest is Test {
         string memory action = "test_action";
         
         vm.expectEmit(true, false, false, true);
-        emit WebhookOracle.AlertSubmitted(0, alertId, action, block.timestamp);
+        emit WebhookOracle.AlertSubmitted(alertId, action, block.timestamp);
         
         oracle.submitAlert(alertId, action);
     }
