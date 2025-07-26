@@ -47,7 +47,11 @@ async def receive_webhook(
     
     # Verify request comes from TradingView IP
     client_ip = request.client.host
+    if client_ip.startswith('172'): # using ngrok, so get the real ip
+        client_ip = request.headers['x-forwarded-for']
+
     if not verify_tradingview_ip(client_ip):
+        print(f'POST request from {client_ip} rejected')
         raise HTTPException(status_code=403, detail="Request not from TradingView IP")
 
     # Check if webhook_id exists
