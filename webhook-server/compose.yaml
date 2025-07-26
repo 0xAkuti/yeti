@@ -1,0 +1,42 @@
+# Docker Compose configuration for TradingView Webhook Server
+
+services:
+  webhook-server:
+    build:
+      context: .
+    ports:
+      - 3001:3001
+    environment:
+      - DSTACK_SIMULATOR_ENDPOINT=http://tee-simulator:8090
+    depends_on:
+      - tee-simulator
+    networks:
+      - webhook-network
+
+  tee-simulator:
+    image: phalanetwork/tappd-simulator:latest
+    ports:
+      - 8090:8090
+    networks:
+      - webhook-network
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+      - 4040:4040
+    depends_on:
+      - webhook-server
+    networks:
+      - webhook-network
+
+networks:
+  webhook-network:
+    driver: bridge
