@@ -24,14 +24,15 @@ contract WebhookOracleTest is Test {
     }
 
     function test_SubmitAlert() public {
-        string memory alertId = "alert_123";
-        string memory action = "block_transaction";
+        // 550e8400-e29b-41d4-a716-446655440000
+        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
+        WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
         oracle.submitAlert(alertId, action);
         
         WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
         assertEq(alert.alertId, alertId);
-        assertEq(alert.action, action);
+        assertTrue(alert.action == action);
         assertTrue(alert.timestamp > 0);
     }
 
@@ -39,12 +40,15 @@ contract WebhookOracleTest is Test {
         oracle.addAuthorizedSubmitter(user1);
         assertTrue(oracle.hasAnyRole(user1, oracle.SUBMITTER_ROLE()));
         
-        vm.prank(user1);
-        oracle.submitAlert("test_alert", "test_action");
+        // 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+        bytes16 alertId = 0x6ba7b8109dad11d180b400c04fd430c8;
         
-        WebhookOracle.AlertData memory alert = oracle.getAlert("test_alert");
-        assertEq(alert.alertId, "test_alert");
-        assertEq(alert.action, "test_action");
+        vm.prank(user1);
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        
+        WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
+        assertEq(alert.alertId, alertId);
+        assertTrue(alert.action == WebhookOracle.Action.LONG);
     }
 
     function test_RemoveAuthorizedSubmitter() public {
@@ -52,39 +56,51 @@ contract WebhookOracleTest is Test {
         oracle.removeAuthorizedSubmitter(user1);
         assertFalse(oracle.hasAnyRole(user1, oracle.SUBMITTER_ROLE()));
         
+        // f47ac10b-58cc-4372-a567-0e02b2c3d479
+        bytes16 alertId = 0xf47ac10b58cc4372a5670e02b2c3d479;
+        
         vm.expectRevert();
         vm.prank(user1);
-        oracle.submitAlert("test_alert", "test_action");
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
     }
 
     function test_UnauthorizedSubmission() public {
+        // 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        bytes16 alertId = 0x9b1deb4d3b7d4bad9bdd2b0d7b3dcb6d;
+        
         vm.expectRevert();
         vm.prank(user1);
-        oracle.submitAlert("test_alert", "test_action");
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
     }
 
     function test_GetNonExistentAlert() public view {
-        WebhookOracle.AlertData memory alert = oracle.getAlert("non_existent");
-        assertEq(alert.alertId, "");
-        assertEq(alert.action, "");
+        // 00000000-0000-4000-8000-000000000000 (minimal valid UUID)
+        bytes16 nonExistentId = 0x00000000000040008000000000000000;
+        WebhookOracle.AlertData memory alert = oracle.getAlert(nonExistentId);
+        assertEq(alert.alertId, bytes16(0));
+        assertTrue(alert.action == WebhookOracle.Action.NONE);
         assertEq(alert.timestamp, 0);
     }
 
     function test_OverwriteAlert() public {
-        oracle.submitAlert("alert_1", "action_1");
-        oracle.submitAlert("alert_1", "action_2");
+        // 12345678-1234-5678-1234-567812345678
+        bytes16 alertId = 0x12345678123456781234567812345678;
         
-        WebhookOracle.AlertData memory alert = oracle.getAlert("alert_1");
-        assertEq(alert.alertId, "alert_1");
-        assertEq(alert.action, "action_2");
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        
+        WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
+        assertEq(alert.alertId, alertId);
+        assertTrue(alert.action == WebhookOracle.Action.LONG);
     }
 
     function test_AlertSubmittedEvent() public {
-        string memory alertId = "event_test";
-        string memory action = "test_action";
+        // a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+        bytes16 alertId = 0xa0eebc999c0b4ef8bb6d6bb9bd380a11;
+        WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
         vm.expectEmit(true, false, false, true);
-        emit WebhookOracle.AlertSubmitted(alertId, action, block.timestamp);
+        emit WebhookOracle.AlertSubmitted(alertId, action, uint32(block.timestamp));
         
         oracle.submitAlert(alertId, action);
     }
