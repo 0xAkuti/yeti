@@ -4,20 +4,27 @@ pragma solidity ^0.8.13;
 import {OwnableRoles} from "solady/auth/OwnableRoles.sol";
 
 contract WebhookOracle is OwnableRoles {
-    struct AlertData {
-        uint256 timestamp;
-        string alertId;
-        string action;
+    enum Action {
+        NONE,
+        SHORT,
+        LONG
     }
 
-    mapping(string => AlertData) public alerts;
+    struct AlertData {
+        bytes16 alertId;    // UUID raw bytes
+        uint32 timestamp;
+        Action action;
+        // 11 bytes remaining, maybe for nonce?
+    }
+
+    mapping(bytes16 => AlertData) public alerts;
     
     uint256 public constant SUBMITTER_ROLE = _ROLE_0;
 
     event AlertSubmitted(
-        string indexed alertId,
-        string action,
-        uint256 timestamp
+        bytes16 indexed alertId,
+        Action action,
+        uint32 timestamp
     );
 
     modifier onlySubmitter() {
@@ -39,19 +46,19 @@ contract WebhookOracle is OwnableRoles {
     }
 
     function submitAlert(
-        string calldata _alertId,
-        string calldata _action
+        bytes16 _alertId,
+        Action _action
     ) external onlySubmitter {
         alerts[_alertId] = AlertData({
-            timestamp: block.timestamp,
             alertId: _alertId,
+            timestamp: uint32(block.timestamp),
             action: _action
         });
 
-        emit AlertSubmitted(_alertId, _action, block.timestamp);
+        emit AlertSubmitted(_alertId, _action, uint32(block.timestamp));
     }
 
-    function getAlert(string calldata _alertId) external view returns (AlertData memory) {
+    function getAlert(bytes16 _alertId) external view returns (AlertData memory) {
         return alerts[_alertId];
     }
 }
