@@ -220,37 +220,49 @@ class WebhookServer:
             raise HTTPException(status_code=500, detail=f"Failed to retrieve alert: {e}")
     
     async def _health_check(self) -> dict:
-        """Simple health check endpoint"""
+        """Standard health check endpoint following RFC draft-inadarei-api-health-check"""
         try:
-            # Check if blockchain manager is initialized
+            # Check critical dependencies
             blockchain_healthy = (
                 self.blockchain_manager is not None and 
                 self.blockchain_manager.account is not None and
                 self.blockchain_manager.w3.is_connected()
             )
             
-            # Check TEE processor
+            # Quick TEE connectivity check
             tee_healthy = True
             try:
-                # Quick test of TEE connectivity
                 await self.tee_processor.derive_user_key("health-check", "test")
             except Exception:
                 tee_healthy = False
             
-            status = "healthy" if (blockchain_healthy and tee_healthy) else "unhealthy"
+            # Determine overall status
+            all_healthy = blockchain_healthy and tee_healthy
             
-            return {
-                "status": status,
-                "blockchain": blockchain_healthy,
-                "tee": tee_healthy,
-                "timestamp": self._get_current_timestamp()
+            response = {
+                "status": "pass" if all_healthy else "fail",
+                "version": "1.0.0",
+                "serviceId": "webhook-server",
+                "description": "TradingView Webhook Server with TEE and Blockchain Integration"
             }
+            
+            # Add checks details only if something is failing
+            if not all_healthy:
+                response["checks"] = {}
+                if not blockchain_healthy:
+                    response["checks"]["blockchain"] = [{"status": "fail", "componentType": "datastore"}]
+                if not tee_healthy:
+                    response["checks"]["tee"] = [{"status": "fail", "componentType": "component"}]
+            
+            return response
+            
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return {
-                "status": "unhealthy",
-                "error": str(e),
-                "timestamp": self._get_current_timestamp()
+                "status": "fail",
+                "version": "1.0.0", 
+                "serviceId": "webhook-server",
+                "description": "TradingView Webhook Server with TEE and Blockchain Integration"
             }
     
     async def _get_server_status(self) -> dict:
