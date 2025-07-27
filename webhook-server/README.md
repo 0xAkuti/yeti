@@ -19,6 +19,8 @@ uv sync
 2. **Set environment variables**:
 ```bash
 export DSTACK_SIMULATOR_ENDPOINT="http://localhost:8090"
+# For ngrok (get from https://dashboard.ngrok.com/get-started/your-authtoken)
+export NGROK_AUTHTOKEN="your-ngrok-authtoken"
 ```
 
 3. **Start TEE simulator** (in another terminal):
@@ -27,8 +29,32 @@ docker run --rm -p 8090:8090 phalanetwork/tappd-simulator:latest
 ```
 
 4. **Run the server**:
+
+**Option A: Local development**
 ```bash
 uv run python main.py
+```
+
+**Option B: Docker with ngrok (recommended for TradingView)**
+```bash
+# Set your ngrok authtoken first
+export NGROK_AUTHTOKEN="your-token-here"
+
+# Build and run everything (webhook server, TEE simulator, ngrok)
+docker compose up --build
+
+# Access ngrok dashboard at http://localhost:4040
+# Your public webhook URLs will be shown there
+```
+
+**Option C: Docker without ngrok**
+```bash
+# Build and run with docker-compose (includes TEE simulator)
+docker compose up --build webhook-server tee-simulator
+
+# Or build and run manually
+docker build -t webhook-server .
+docker run --rm -p 3001:3001 -e DSTACK_SIMULATOR_ENDPOINT="http://host.docker.internal:8090" webhook-server
 ```
 
 ## Usage
@@ -62,8 +88,12 @@ curl http://localhost:3001/webhooks
 ## TradingView Configuration
 
 1. Go to TradingView � Alerts
-2. Set webhook URL to: `http://your-server:3001/webhook/{webhook_id}`
+2. Set webhook URL to: `https://your-ngrok-url.ngrok.io/webhook/{webhook_id}`
+   - Get your ngrok URL from http://localhost:4040 (ngrok dashboard)
+   - Use the HTTPS URL for better security
 3. No additional authentication needed - requests are verified by IP whitelist
+
+**Note**: When using ngrok, TradingView's IP whitelist won't work since requests come through ngrok's servers. For production, consider using ngrok's authentication features or deploy to a server with a static IP.
 
 ## Security
 
