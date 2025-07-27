@@ -1,7 +1,7 @@
 import logging
 import json
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from fastapi import FastAPI, Request, HTTPException
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse
 from blockchain_utils import BlockchainManager
@@ -9,33 +9,25 @@ from blockchain_utils import BlockchainManager
 logger = logging.getLogger(__name__)
 
 class TradingViewIPValidator:
-    """Handles TradingView IP whitelist validation"""
-    
     TRADINGVIEW_IPS = {
-        "52.89.214.238",
-        "34.212.75.30", 
-        "54.218.53.128",
-        "52.32.178.7"
+        "52.89.214.238", "34.212.75.30", 
+        "54.218.53.128", "52.32.178.7"
     }
     
     @classmethod
     def verify_ip(cls, client_ip: str) -> bool:
-        """Verify request comes from TradingView IP addresses"""
         return client_ip in cls.TRADINGVIEW_IPS
 
 class WebhookManager:
-    """Manages webhook creation and user mapping"""
-    
     def __init__(self):
         self.webhook_users: Dict[str, str] = {}
         
     def create_webhook(self) -> dict:
-        """Create a unique webhook URL for a user"""
         webhook_id = str(uuid.uuid4())
         user_id = f"user-{len(self.webhook_users) + 1}"
         self.webhook_users[webhook_id] = user_id
         
-        logger.info(f"Created webhook for user {user_id}: {webhook_id}")
+        logger.info(f"Created webhook {webhook_id} for {user_id}")
         
         return {
             "webhook_id": webhook_id,
@@ -44,90 +36,66 @@ class WebhookManager:
         }
     
     def get_user(self, webhook_id: str) -> Optional[str]:
-        """Get user for webhook ID"""
         return self.webhook_users.get(webhook_id)
     
     def webhook_exists(self, webhook_id: str) -> bool:
-        """Check if webhook exists"""
         return webhook_id in self.webhook_users
     
     def list_webhooks(self) -> list:
-        """List all created webhooks"""
         return [
-            {
-                "webhook_id": wid,
-                "user": user,
-                "webhook_url": f"/webhook/{wid}"
-            }
+            {"webhook_id": wid, "user": user, "webhook_url": f"/webhook/{wid}"}
             for wid, user in self.webhook_users.items()
         ]
 
 class TEEProcessor:
-    """Handles Phala TEE integration"""
-    
     @staticmethod
     async def derive_user_key(webhook_id: str, user_id: str) -> Optional[str]:
-        """Derive unique key for user via TEE"""
         try:
             client = AsyncTappdClient()
             derive_key = await client.derive_key(f'/webhook/{webhook_id}', user_id)
             assert isinstance(derive_key, DeriveKeyResponse)
             user_key = derive_key.toBytes(32).hex()
-            
             logger.info(f"TEE key derived for user {user_id}")
             return user_key
-            
         except Exception as e:
             logger.warning(f"TEE key derivation failed for user {user_id}: {e}")
             return None
     
     @staticmethod
     async def derive_private_key() -> str:
-        """Derive consistent private key for all blockchain transactions via TEE"""
         try:
             client = AsyncTappdClient()
-            # Use a consistent derivation path for all blockchain operations
             derive_key = await client.derive_key('/blockchain/master', 'wallet')
             assert isinstance(derive_key, DeriveKeyResponse)
             
-            # Derive 32-byte private key
             private_key = derive_key.toBytes(32).hex()
-            
-            # Ensure it's a valid private key (starts with 0x)
             if not private_key.startswith('0x'):
                 private_key = '0x' + private_key
             
-            logger.info("TEE master private key derived for blockchain operations")
+            logger.info("TEE master private key derived")
             return private_key
-            
         except Exception as e:
             logger.error(f"TEE private key derivation failed: {e}")
             raise
     
 
 class WebhookServer:
-    """Main webhook server application"""
-    
     def __init__(self):
         self.app = FastAPI(title="TradingView Webhook Server")
         self.webhook_manager = WebhookManager()
         self.blockchain_manager = None
         self.tee_processor = TEEProcessor()
-        
-        # Setup routes
         self._setup_routes()
         
-        # Setup startup event
         @self.app.on_event("startup")
         async def startup_event():
             await self._initialize_blockchain()
     
     def _setup_routes(self):
-        """Setup FastAPI routes"""
         
         @self.app.get("/")
         async def root():
-            return {"message": "TradingView Webhook Server with Blockchain Integration"}
+            return {"message": "ok"}
 
         @self.app.post("/create-webhook")
         async def create_webhook():
@@ -154,59 +122,43 @@ class WebhookServer:
             return await self._get_server_status()
     
     async def _initialize_blockchain(self):
-        """Initialize blockchain connection - required for operation"""
         try:
             logger.info("Initializing blockchain connection")
-            
-            # Derive master private key from TEE
             private_key = await self.tee_processor.derive_private_key()
-            
-            # Initialize blockchain manager with TEE-derived key
             self.blockchain_manager = BlockchainManager(private_key)
-            
-            logger.info("Blockchain connection established successfully")
+            logger.info("Blockchain connection established")
         except Exception as e:
-            logger.critical(f"Failed to initialize blockchain connection: {e}")
+            logger.critical(f"Blockchain initialization failed: {e}")
             raise SystemExit(f"Blockchain connection required but failed: {e}")
     
     async def _handle_webhook(self, webhook_id: str, request: Request) -> dict:
-        """Handle incoming webhook requests"""
-        logger.info(f"Received webhook request for ID: {webhook_id}")
+        logger.info(f"Received webhook: {webhook_id}")
         
-        # Verify IP
         client_ip = self._extract_client_ip(request)
         if not TradingViewIPValidator.verify_ip(client_ip):
-            logger.warning(f"Rejected request from unauthorized IP: {client_ip}")
+            logger.warning(f"Unauthorized IP: {client_ip}")
             raise HTTPException(status_code=403, detail="Request not from TradingView IP")
 
-        # Check webhook exists
         if not self.webhook_manager.webhook_exists(webhook_id):
-            logger.warning(f"Webhook not found: {webhook_id}")
             raise HTTPException(status_code=404, detail="Webhook not found")
 
-        # Parse payload
         payload = await self._parse_payload(request)
         user_id = self.webhook_manager.get_user(webhook_id)
         
-        logger.info(f"Processing webhook for user {user_id} from IP {client_ip}")
+        logger.info(f"Processing webhook for {user_id} from {client_ip}")
         logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         
-        # Submit to blockchain
         blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
         
         if blockchain_result["success"]:
-            logger.info(f"Alert submitted successfully: TX {blockchain_result['tx_hash']}")
+            logger.info(f"Alert submitted: TX {blockchain_result['tx_hash']}")
         else:
             logger.error(f"Blockchain submission failed: {blockchain_result['error']}")
-            raise HTTPException(
-                status_code=500, 
-                detail="Failed to process webhook"
-            )
+            raise HTTPException(status_code=500, detail="Failed to process webhook")
         
         return {"status": "received"}
     
     async def _get_alert(self, webhook_id: str) -> dict:
-        """Retrieve alert data from blockchain"""
         if not self.webhook_manager.webhook_exists(webhook_id):
             raise HTTPException(status_code=404, detail="Webhook not found")
         
@@ -220,50 +172,39 @@ class WebhookServer:
             raise HTTPException(status_code=500, detail=f"Failed to retrieve alert: {e}")
     
     async def _health_check(self) -> dict:
-        """Standard health check endpoint following RFC draft-inadarei-api-health-check"""
         try:
-            # Check critical dependencies
             blockchain_healthy = (
                 self.blockchain_manager is not None and 
                 self.blockchain_manager.account is not None and
                 self.blockchain_manager.w3.is_connected()
             )
             
-            # Quick TEE connectivity check
             tee_healthy = True
             try:
                 await self.tee_processor.derive_user_key("health-check", "test")
             except Exception:
                 tee_healthy = False
             
-            # Determine overall status
             all_healthy = blockchain_healthy and tee_healthy
             
             response = {
                 "status": "pass" if all_healthy else "fail",
                 "version": "1.0.0",
-                "serviceId": "webhook-server",
-                "description": "TradingView Webhook Server with TEE and Blockchain Integration"
+                "serviceId": "webhook-server"
             }
             
-            # Add checks details only if something is failing
             if not all_healthy:
                 response["checks"] = {}
                 if not blockchain_healthy:
-                    response["checks"]["blockchain"] = [{"status": "fail", "componentType": "datastore"}]
+                    response["checks"]["blockchain"] = [{"status": "fail"}]
                 if not tee_healthy:
-                    response["checks"]["tee"] = [{"status": "fail", "componentType": "component"}]
+                    response["checks"]["tee"] = [{"status": "fail"}]
             
             return response
             
         except Exception as e:
             logger.error(f"Health check failed: {e}")
-            return {
-                "status": "fail",
-                "version": "1.0.0", 
-                "serviceId": "webhook-server",
-                "description": "TradingView Webhook Server with TEE and Blockchain Integration"
-            }
+            return {"status": "fail", "version": "1.0.0", "serviceId": "webhook-server"}
     
     async def _get_server_status(self) -> dict:
         """Detailed server status endpoint"""

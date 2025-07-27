@@ -14,47 +14,25 @@ logger = logging.getLogger(__name__)
 
 class BlockchainManager:
     def __init__(self, private_key: str = None):
-        logger.info("Initializing blockchain connection")
-        
         if not CONTRACT_ADDRESS or CONTRACT_ADDRESS == "0x0000000000000000000000000000000000000000":
-            raise ValueError("CONTRACT_ADDRESS environment variable not set")
+            raise ValueError("CONTRACT_ADDRESS not set")
         
         self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
-        
         if not self.w3.is_connected():
             raise ConnectionError(f"Failed to connect to blockchain at {RPC_URL}")
         
-        # Initialize account if private key provided
         self.private_key = private_key
         self.account = None
         if private_key:
-            try:
-                self.account = Account.from_key(private_key)
-                logger.info(f"Account initialized: {self.account.address}")
-            except Exception as e:
-                logger.error(f"Failed to initialize account: {e}")
-                raise ValueError(f"Invalid private key: {e}")
+            self.account = Account.from_key(private_key)
+            logger.info(f"Account initialized: {self.account.address}")
         
         self.contract = self.w3.eth.contract(
             address=CONTRACT_ADDRESS,
             abi=WEBHOOK_ORACLE_ABI
         )
-        
-        logger.info(f"Connected to blockchain: {RPC_URL}")
-        logger.info(f"Contract address: {CONTRACT_ADDRESS}")
-    
-    def initialize_account(self, private_key: str):
-        """Initialize blockchain account with provided private key"""
-        try:
-            self.private_key = private_key
-            self.account = Account.from_key(private_key)
-            logger.info(f"Account initialized: {self.account.address}")
-        except Exception as e:
-            logger.error(f"Failed to initialize account: {e}")
-            raise ValueError(f"Invalid private key: {e}")
     
     def get_account_balance(self) -> dict:
-        """Get current account balance and blockchain info"""
         try:
             if not self.account:
                 return {"error": "Account not initialized"}
@@ -64,59 +42,36 @@ class BlockchainManager:
             
             return {
                 "address": self.account.address,
-                "balance_wei": str(balance_wei),
                 "balance_eth": str(balance_eth),
                 "connected": self.w3.is_connected(),
                 "chain_id": self.w3.eth.chain_id,
                 "latest_block": self.w3.eth.block_number
             }
         except Exception as e:
-            logger.error(f"Failed to get account balance: {e}")
             return {"error": str(e)}
 
     def uuid_to_bytes16(self, uuid_str: str) -> bytes:
-        """Convert UUID string to bytes16 for contract calls"""
-        try:
-            # Parse UUID and convert to bytes16
-            uuid_obj = uuid.UUID(uuid_str)
-            return uuid_obj.bytes
-        except Exception as e:
-            raise ValueError(f"Invalid UUID format: {uuid_str}") from e
+        return uuid.UUID(uuid_str).bytes
 
     def action_from_payload(self, payload: dict) -> int:
-        """Extract and map action from TradingView payload to contract enum"""
-        # Try different common fields for action
         action_str = (
             payload.get("action", "") or 
             payload.get("side", "") or 
             payload.get("signal", "") or
             payload.get("order", "")
         ).lower()
-        
         return ACTION_MAPPING.get(action_str, Action.NONE)
 
     async def submit_alert_on_chain(self, webhook_id: str, payload: dict) -> dict:
-        """Submit alert to smart contract using current web3.py best practices"""
-        logger.info(f"Submitting alert to blockchain for webhook_id: {webhook_id}")
-        
         if not self.account or not self.private_key:
-            return {
-                "success": False,
-                "error": "Blockchain account not initialized.",
-                "alert_id": webhook_id
-            }
+            return {"success": False, "error": "Account not initialized", "alert_id": webhook_id}
         
         try:
-            # Convert UUID to bytes16
             alert_id_bytes = self.uuid_to_bytes16(webhook_id)
-            
-            # Map payload to action enum
             action = self.action_from_payload(payload)
-            action_name = self._action_to_name(action)
             
-            logger.info(f"Mapped action: {action_name} ({action}) for payload: {payload}")
+            logger.info(f"Submitting alert: {self._action_to_name(action)} for {webhook_id}")
             
-            # Build transaction with automatic nonce and gas estimation
             transaction = self.contract.functions.submitAlert(
                 alert_id_bytes, action
             ).build_transaction({
@@ -124,23 +79,14 @@ class BlockchainManager:
                 'nonce': self.w3.eth.get_transaction_count(self.account.address),
             })
             
-            # Sign transaction with TEE-derived private key
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            
-            # Send transaction
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
-            
-            logger.info(f"Transaction submitted: {tx_hash.hex()}")
-            
-            # Wait for confirmation
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
             
-            # Check if transaction was successful
             if receipt.status != 1:
-                logger.error(f"Transaction failed: {tx_hash.hex()}")
                 raise Exception(f"Transaction failed: {tx_hash.hex()}")
             
-            logger.info(f"Transaction confirmed in block {receipt.blockNumber}, gas used: {receipt.gasUsed}")
+            logger.info(f"Alert submitted: {tx_hash.hex()}")
             
             return {
                 "success": True,
@@ -149,7 +95,7 @@ class BlockchainManager:
                 "gas_used": receipt.gasUsed,
                 "alert_id": webhook_id,
                 "action": action,
-                "action_name": action_name
+                "action_name": self._action_to_name(action)
             }
             
         except Exception as e:
@@ -161,13 +107,7 @@ class BlockchainManager:
             }
 
     def _action_to_name(self, action: int) -> str:
-        """Convert action enum to readable name"""
-        action_names = {
-            Action.NONE: "NONE",
-            Action.SHORT: "SHORT", 
-            Action.LONG: "LONG"
-        }
-        return action_names.get(action, "UNKNOWN")
+        return {Action.NONE: "NONE", Action.SHORT: "SHORT", Action.LONG: "LONG"}.get(action, "UNKNOWN")
 
     async def get_alert_from_chain(self, webhook_id: str) -> dict:
         """Retrieve alert data from smart contract"""

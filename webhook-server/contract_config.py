@@ -1,7 +1,4 @@
-# Smart Contract Configuration
 import os
-
-# Contract ABI - Essential functions only
 WEBHOOK_ORACLE_ABI = [
     {
         "type": "function",
@@ -42,17 +39,14 @@ WEBHOOK_ORACLE_ABI = [
     }
 ]
 
-# Contract configuration
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0x0000000000000000000000000000000000000000")
-RPC_URL = os.getenv("RPC_URL", "http://localhost:8545")  # Anvil default
+RPC_URL = os.getenv("RPC_URL", "http://localhost:8545")
 
-# Action enum mapping
 class Action:
     NONE = 0
     SHORT = 1  
     LONG = 2
 
-# Map TradingView actions to contract enum
 ACTION_MAPPING = {
     "buy": Action.LONG,
     "sell": Action.SHORT,
