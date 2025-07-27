@@ -153,35 +153,22 @@ class WebhookServer:
         logger.info(f"Processing webhook for user {user_id} from IP {client_ip}")
         logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         
-        # Initialize response
-        response = {
-            "status": "success",
-            "user": user_id,
-            "webhook_id": webhook_id,
-            "message": "Webhook processed successfully"
-        }
-        
         # Process with TEE
-        tee_key = await self.tee_processor.derive_user_key(webhook_id, user_id)
-        if tee_key:
-            response["tee_key"] = tee_key
-        else:
-            response["tee_error"] = "TEE key derivation failed"
+        await self.tee_processor.derive_user_key(webhook_id, user_id)
         
         # Submit to blockchain (required)
         blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
         
         if blockchain_result["success"]:
             logger.info(f"Alert submitted successfully: TX {blockchain_result['tx_hash']}")
-            response["blockchain"] = blockchain_result
         else:
             logger.error(f"Blockchain submission failed: {blockchain_result['error']}")
             raise HTTPException(
                 status_code=500, 
-                detail=f"Failed to submit alert to blockchain: {blockchain_result['error']}"
+                detail="Failed to process webhook"
             )
         
-        return response
+        return {"status": "received"}
     
     async def _get_alert(self, webhook_id: str) -> dict:
         """Retrieve alert data from blockchain"""
