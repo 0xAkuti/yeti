@@ -1,6 +1,5 @@
 import uuid
 import logging
-from typing import Union
 from web3 import Web3
 from eth_account import Account
 from contract_config import (
@@ -61,7 +60,7 @@ class BlockchainManager:
         return ACTION_MAPPING.get(action_str, Action.NONE)
 
     async def submit_alert_on_chain(self, webhook_id: str, payload: dict) -> dict:
-        """Submit alert to smart contract"""
+        """Submit alert to smart contract using current web3.py best practices"""
         logger.info(f"Submitting alert to blockchain for webhook_id: {webhook_id}")
         
         try:
@@ -74,31 +73,18 @@ class BlockchainManager:
             
             logger.info(f"Mapped action: {action_name} ({action}) for payload: {payload}")
             
-            # Build transaction
-            nonce = self.w3.eth.get_transaction_count(self.account.address)
-            
-            # Estimate gas
-            try:
-                gas_estimate = self.contract.functions.submitAlert(
-                    alert_id_bytes, action
-                ).estimate_gas({'from': self.account.address})
-                logger.debug(f"Gas estimate: {gas_estimate}")
-            except Exception as e:
-                logger.error(f"Gas estimation failed: {e}")
-                raise Exception(f"Gas estimation failed: {e}")
-            
-            # Build transaction
+            # Build transaction with automatic nonce and gas estimation
             transaction = self.contract.functions.submitAlert(
                 alert_id_bytes, action
             ).build_transaction({
                 'from': self.account.address,
-                'nonce': nonce,
-                'gas': int(gas_estimate * 1.2),  # Add 20% buffer
-                'gasPrice': self.w3.eth.gas_price,
+                'nonce': self.w3.eth.get_transaction_count(self.account.address),
             })
             
-            # Sign and send transaction
-            signed_txn = self.account.sign_transaction(transaction)
+            # Sign transaction
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, PRIVATE_KEY)
+            
+            # Send transaction
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
             
             logger.info(f"Transaction submitted: {tx_hash.hex()}")
@@ -151,7 +137,7 @@ class BlockchainManager:
             result = self.contract.functions.getAlert(alert_id_bytes).call()
             
             # Parse result tuple (alertId, timestamp, action)
-            alert_id, timestamp, action = result
+            _, timestamp, action = result
             
             exists = timestamp > 0
             logger.info(f"Alert retrieved: exists={exists}, timestamp={timestamp}, action={self._action_to_name(action)}")
