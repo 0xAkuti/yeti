@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ARG PYTHON_VERSION=3.12
-FROM python:${PYTHON_VERSION}-slim as base
+FROM python:${PYTHON_VERSION}-slim
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -10,44 +10,44 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 
+# Install uv with pinned version
+COPY --from=ghcr.io/astral-sh/uv:0.5.1 /uv /uvx /usr/local/bin/
+
 WORKDIR /app
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-# Create a non-privileged user that the app will run under.
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    appuser
-
-# Copy the project files
+# Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv
+# Install dependencies first (better caching)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
-# Copy the source code into the container.
+# Copy source code
 COPY . .
 
-# Install the project itself (still as root)
+# Install the project in non-editable mode
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+    uv sync --frozen --no-editable
 
-# Switch to the non-privileged user to run the application.
+# Create non-privileged user
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/home/appuser" \
+    --uid "10001" \
+    appuser && \
+    chown -R appuser:appuser /app
+
+# Switch to non-privileged user
 USER appuser
 
-# Expose the port that the application listens on.
-EXPOSE 3001
+# Set environment variables
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 ENV DSTACK_SIMULATOR_ENDPOINT="http://host.docker.internal:8090"
 
-# Run the application directly with the installed Python
-CMD [".venv/bin/python", "main.py"]
+# Expose port
+EXPOSE 3001
+
+# Use the installed Python directly from venv (uv recommendation)
+CMD ["/app/.venv/bin/python", "main.py"]
