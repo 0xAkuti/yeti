@@ -45,7 +45,6 @@ WEBHOOK_ORACLE_ABI = [
 # Contract configuration
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0x0000000000000000000000000000000000000000")
 RPC_URL = os.getenv("RPC_URL", "http://localhost:8545")  # Anvil default
-PRIVATE_KEY = os.getenv("PRIVATE_KEY", "")
 
 # Action enum mapping
 class Action:

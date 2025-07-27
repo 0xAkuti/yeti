@@ -80,6 +80,30 @@ class TEEProcessor:
         except Exception as e:
             logger.warning(f"TEE key derivation failed for user {user_id}: {e}")
             return None
+    
+    @staticmethod
+    async def derive_private_key() -> str:
+        """Derive consistent private key for all blockchain transactions via TEE"""
+        try:
+            client = AsyncTappdClient()
+            # Use a consistent derivation path for all blockchain operations
+            derive_key = await client.derive_key('/blockchain/master', 'wallet')
+            assert isinstance(derive_key, DeriveKeyResponse)
+            
+            # Derive 32-byte private key
+            private_key = derive_key.toBytes(32).hex()
+            
+            # Ensure it's a valid private key (starts with 0x)
+            if not private_key.startswith('0x'):
+                private_key = '0x' + private_key
+            
+            logger.info("TEE master private key derived for blockchain operations")
+            return private_key
+            
+        except Exception as e:
+            logger.error(f"TEE private key derivation failed: {e}")
+            raise
+    
 
 class WebhookServer:
     """Main webhook server application"""
@@ -125,7 +149,13 @@ class WebhookServer:
         """Initialize blockchain connection - required for operation"""
         try:
             logger.info("Initializing blockchain connection")
-            self.blockchain_manager = BlockchainManager()
+            
+            # Derive master private key from TEE
+            private_key = await self.tee_processor.derive_private_key()
+            
+            # Initialize blockchain manager with TEE-derived key
+            self.blockchain_manager = BlockchainManager(private_key)
+            
             logger.info("Blockchain connection established successfully")
         except Exception as e:
             logger.critical(f"Failed to initialize blockchain connection: {e}")
@@ -153,10 +183,7 @@ class WebhookServer:
         logger.info(f"Processing webhook for user {user_id} from IP {client_ip}")
         logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         
-        # Process with TEE
-        await self.tee_processor.derive_user_key(webhook_id, user_id)
-        
-        # Submit to blockchain (required)
+        # Submit to blockchain
         blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
         
         if blockchain_result["success"]:

@@ -5,8 +5,7 @@ from eth_account import Account
 from contract_config import (
     WEBHOOK_ORACLE_ABI, 
     CONTRACT_ADDRESS, 
-    RPC_URL, 
-    PRIVATE_KEY,
+    RPC_URL,
     Action,
     ACTION_MAPPING
 )
@@ -14,29 +13,45 @@ from contract_config import (
 logger = logging.getLogger(__name__)
 
 class BlockchainManager:
-    def __init__(self):
+    def __init__(self, private_key: str = None):
         logger.info("Initializing blockchain connection")
         
-        if not PRIVATE_KEY:
-            raise ValueError("PRIVATE_KEY environment variable not set")
-            
         if not CONTRACT_ADDRESS or CONTRACT_ADDRESS == "0x0000000000000000000000000000000000000000":
             raise ValueError("CONTRACT_ADDRESS environment variable not set")
-            
+        
         self.w3 = Web3(Web3.HTTPProvider(RPC_URL))
         
         if not self.w3.is_connected():
             raise ConnectionError(f"Failed to connect to blockchain at {RPC_URL}")
-            
-        self.account = Account.from_key(PRIVATE_KEY)
+        
+        # Initialize account if private key provided
+        self.private_key = private_key
+        self.account = None
+        if private_key:
+            try:
+                self.account = Account.from_key(private_key)
+                logger.info(f"Account initialized: {self.account.address}")
+            except Exception as e:
+                logger.error(f"Failed to initialize account: {e}")
+                raise ValueError(f"Invalid private key: {e}")
+        
         self.contract = self.w3.eth.contract(
             address=CONTRACT_ADDRESS,
             abi=WEBHOOK_ORACLE_ABI
         )
         
         logger.info(f"Connected to blockchain: {RPC_URL}")
-        logger.info(f"Using account: {self.account.address}")
         logger.info(f"Contract address: {CONTRACT_ADDRESS}")
+    
+    def initialize_account(self, private_key: str):
+        """Initialize blockchain account with provided private key"""
+        try:
+            self.private_key = private_key
+            self.account = Account.from_key(private_key)
+            logger.info(f"Account initialized: {self.account.address}")
+        except Exception as e:
+            logger.error(f"Failed to initialize account: {e}")
+            raise ValueError(f"Invalid private key: {e}")
 
     def uuid_to_bytes16(self, uuid_str: str) -> bytes:
         """Convert UUID string to bytes16 for contract calls"""
@@ -63,6 +78,13 @@ class BlockchainManager:
         """Submit alert to smart contract using current web3.py best practices"""
         logger.info(f"Submitting alert to blockchain for webhook_id: {webhook_id}")
         
+        if not self.account or not self.private_key:
+            return {
+                "success": False,
+                "error": "Blockchain account not initialized.",
+                "alert_id": webhook_id
+            }
+        
         try:
             # Convert UUID to bytes16
             alert_id_bytes = self.uuid_to_bytes16(webhook_id)
@@ -81,8 +103,8 @@ class BlockchainManager:
                 'nonce': self.w3.eth.get_transaction_count(self.account.address),
             })
             
-            # Sign transaction
-            signed_txn = self.w3.eth.account.sign_transaction(transaction, PRIVATE_KEY)
+            # Sign transaction with TEE-derived private key
+            signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
             
             # Send transaction
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
