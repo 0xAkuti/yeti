@@ -144,6 +144,14 @@ class WebhookServer:
         @self.app.get("/alert/{webhook_id}")
         async def get_alert(webhook_id: str):
             return await self._get_alert(webhook_id)
+
+        @self.app.get("/health")
+        async def health_check():
+            return await self._health_check()
+
+        @self.app.get("/status")
+        async def server_status():
+            return await self._get_server_status()
     
     async def _initialize_blockchain(self):
         """Initialize blockchain connection - required for operation"""
@@ -210,6 +218,98 @@ class WebhookServer:
         except Exception as e:
             logger.error(f"Failed to retrieve alert {webhook_id}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to retrieve alert: {e}")
+    
+    async def _health_check(self) -> dict:
+        """Simple health check endpoint"""
+        try:
+            # Check if blockchain manager is initialized
+            blockchain_healthy = (
+                self.blockchain_manager is not None and 
+                self.blockchain_manager.account is not None and
+                self.blockchain_manager.w3.is_connected()
+            )
+            
+            # Check TEE processor
+            tee_healthy = True
+            try:
+                # Quick test of TEE connectivity
+                await self.tee_processor.derive_user_key("health-check", "test")
+            except Exception:
+                tee_healthy = False
+            
+            status = "healthy" if (blockchain_healthy and tee_healthy) else "unhealthy"
+            
+            return {
+                "status": status,
+                "blockchain": blockchain_healthy,
+                "tee": tee_healthy,
+                "timestamp": self._get_current_timestamp()
+            }
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": self._get_current_timestamp()
+            }
+    
+    async def _get_server_status(self) -> dict:
+        """Detailed server status endpoint"""
+        try:
+            # Get blockchain info (filtered for security)
+            blockchain_info = {}
+            if self.blockchain_manager:
+                full_info = self.blockchain_manager.get_account_balance()
+                blockchain_info = {
+                    "address": full_info.get("address"),
+                    "balance_eth": full_info.get("balance_eth"), 
+                    "connected": full_info.get("connected"),
+                    "chain_id": full_info.get("chain_id"),
+                    "latest_block": full_info.get("latest_block")
+                }
+            
+            # Get webhook stats (no sensitive data)
+            webhook_stats = {
+                "total_webhooks": len(self.webhook_manager.webhook_users)
+            }
+            
+            # TEE status (no sensitive data)
+            tee_status = {"available": False}
+            try:
+                test_key = await self.tee_processor.derive_user_key("status-check", "test")
+                tee_status = {
+                    "available": test_key is not None,
+                    "status": "connected"
+                }
+            except Exception as e:
+                tee_status = {
+                    "available": False,
+                    "status": "disconnected"
+                }
+            
+            return {
+                "server": {
+                    "status": "running",
+                    "timestamp": self._get_current_timestamp()
+                },
+                "blockchain": blockchain_info,
+                "tee": tee_status,
+                "webhooks": webhook_stats
+            }
+        except Exception as e:
+            logger.error(f"Status check failed: {e}")
+            return {
+                "server": {
+                    "status": "error",
+                    "error": str(e),
+                    "timestamp": self._get_current_timestamp()
+                }
+            }
+    
+    def _get_current_timestamp(self) -> str:
+        """Get current timestamp in ISO format"""
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
     
     def _extract_client_ip(self, request: Request) -> str:
         """Extract client IP from request headers"""

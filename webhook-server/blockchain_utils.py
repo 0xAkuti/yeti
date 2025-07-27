@@ -52,6 +52,27 @@ class BlockchainManager:
         except Exception as e:
             logger.error(f"Failed to initialize account: {e}")
             raise ValueError(f"Invalid private key: {e}")
+    
+    def get_account_balance(self) -> dict:
+        """Get current account balance and blockchain info"""
+        try:
+            if not self.account:
+                return {"error": "Account not initialized"}
+            
+            balance_wei = self.w3.eth.get_balance(self.account.address)
+            balance_eth = self.w3.from_wei(balance_wei, 'ether')
+            
+            return {
+                "address": self.account.address,
+                "balance_wei": str(balance_wei),
+                "balance_eth": str(balance_eth),
+                "connected": self.w3.is_connected(),
+                "chain_id": self.w3.eth.chain_id,
+                "latest_block": self.w3.eth.block_number
+            }
+        except Exception as e:
+            logger.error(f"Failed to get account balance: {e}")
+            return {"error": str(e)}
 
     def uuid_to_bytes16(self, uuid_str: str) -> bytes:
         """Convert UUID string to bytes16 for contract calls"""
