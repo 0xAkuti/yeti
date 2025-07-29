@@ -243,6 +243,17 @@ class YetiEndToEndTest {
         console.log(`   Extension encoded: ${extension.encode()}`);
         console.log(`   Extension has predicate: ${extension.hasPredicate}`);
         
+        // The key to avoiding BitInvalidatedOrder is using a unique nonce in MakerTraits
+        // BitInvalidator mode is used when partial fills are disabled (default)
+        // Each order needs a unique nonce to avoid conflicts
+        const { randomBytes, hexlify } = await import('ethers');
+        const randomNonce = BigInt(hexlify(randomBytes(5))); // 40-bit random nonce
+        
+        const makerTraits = MakerTraits.default().withNonce(randomNonce);
+        
+        console.log(`   Random nonce: ${randomNonce.toString()}`);
+        console.log(`   Using BitInvalidator mode: ${makerTraits.isBitInvalidatorMode()}`);
+        
         this.limitOrder = new LimitOrder(
             {
                 maker: new Address(this.maker.address),
@@ -252,7 +263,7 @@ class YetiEndToEndTest {
                 takingAmount: parseEther('0.5'), // For 0.5 WETH
                 salt: LimitOrder.buildSalt(extension)
             },
-            MakerTraits.default(),
+            makerTraits,
             extension
         );
         
