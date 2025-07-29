@@ -245,13 +245,12 @@ class YetiEndToEndTest {
         
         // The key to avoiding BitInvalidatedOrder is using a unique nonce in MakerTraits
         // BitInvalidator mode is used when partial fills are disabled (default)
-        // Each order needs a unique nonce to avoid conflicts
-        const { randomBytes, hexlify } = await import('ethers');
-        const randomNonce = BigInt(hexlify(randomBytes(5))); // 40-bit random nonce
+        // Derive nonce from alert ID to make it deterministic but unique per alert
+        const alertIdNonce = BigInt(this.alertId) & ((1n << 40n) - 1n); // Use lower 40 bits of alert ID
         
-        const makerTraits = MakerTraits.default().withNonce(randomNonce);
+        const makerTraits = MakerTraits.default().withNonce(alertIdNonce);
         
-        console.log(`   Random nonce: ${randomNonce.toString()}`);
+        console.log(`   Alert-derived nonce: ${alertIdNonce.toString()}`);
         console.log(`   Using BitInvalidator mode: ${makerTraits.isBitInvalidatorMode()}`);
         
         this.limitOrder = new LimitOrder(
@@ -270,7 +269,7 @@ class YetiEndToEndTest {
         console.log('✅ Limit order created:');
         console.log(`   Selling: 1000 USDC`);
         console.log(`   Buying: 0.5 WETH`);
-        console.log(`   Predicate: calls checkPredicate(${this.alertId}, SHORT)`);
+        console.log(`   Predicate: calls checkPredicate(${this.alertId}, LONG)`);
         console.log(`   Alert ID: ${this.alertId}`);
         console.log(`   Order has extension: ${!this.limitOrder.extension.isEmpty()}`);
     }
