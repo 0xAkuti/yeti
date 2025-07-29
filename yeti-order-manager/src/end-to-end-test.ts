@@ -10,8 +10,8 @@ import {
 } from '@1inch/limit-order-sdk';
 
 // Contract addresses
-const WEBHOOK_ORACLE_ADDRESS = '0x4dAd2cb11D49D21b77c7165F101B19f003F20C2D'; // From deployment
-const WEBHOOK_PREDICATE_ADDRESS = '0x0EA531B186fdEA915e94AF8A93C6dfb85b407f5A'; // From deployment
+const WEBHOOK_ORACLE_ADDRESS = '0x1Ae0817d98a8A222235A2383422e1A1c03d73e3a'; // From deployment
+const WEBHOOK_PREDICATE_ADDRESS = '0x3B071F9a25B9Da0193E81F0a68b165d67Adb0714'; // From deployment
 const LIMIT_ORDER_PROTOCOL = getAddress('0x111111125421cA6dc452d289314280a0f8842A65');
 const USDC = getAddress('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
 const WETH = getAddress('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
@@ -56,7 +56,7 @@ class YetiEndToEndTest {
 
     constructor(webhookServerUrl: string = 'http://localhost:3001') {
         this.webhookServerUrl = webhookServerUrl;
-        this.provider = new JsonRpcProvider('https://virtual.mainnet.eu.rpc.tenderly.co/4b423b82-a3ae-421e-b85d-da162319c33d');
+        this.provider = new JsonRpcProvider('http://localhost:8545');
         this.maker = new Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', this.provider);
         this.taker = new Wallet('0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', this.provider);
         
@@ -96,8 +96,14 @@ class YetiEndToEndTest {
         const usdcWithMaker = this.usdc.connect(this.maker) as any;
         const wethWithTaker = this.weth.connect(this.taker) as any;
         
-        await usdcWithMaker.approve(LIMIT_ORDER_PROTOCOL, parseUnits('10000', 6));
-        await wethWithTaker.approve(LIMIT_ORDER_PROTOCOL, parseEther('10'));
+        // Get current nonces to ensure proper transaction ordering
+        const makerNonce = await this.provider.getTransactionCount(this.maker.address, 'pending');
+        const takerNonce = await this.provider.getTransactionCount(this.taker.address, 'pending');
+        
+        console.log(`   Current nonces - Maker: ${makerNonce}, Taker: ${takerNonce}`);
+        
+        await usdcWithMaker.approve(LIMIT_ORDER_PROTOCOL, parseUnits('10000', 6), { nonce: makerNonce });
+        await wethWithTaker.approve(LIMIT_ORDER_PROTOCOL, parseEther('10'), { nonce: takerNonce });
         
         const makerUSDC = await this.usdc.balanceOf(this.maker.address);
         const takerWETH = await this.weth.balanceOf(this.taker.address);
@@ -157,8 +163,6 @@ class YetiEndToEndTest {
         
         const wethWithWhale = this.weth.connect(await this.provider.getSigner(wethWhale)) as any;
         await wethWithWhale.transfer(this.taker.address, parseEther('10'));
-        
-        console.log('✅ Anvil whale impersonation complete');
     }
 
     private async registerWebhook() {
@@ -214,7 +218,7 @@ class YetiEndToEndTest {
         // Format: swap.arbitraryStaticCall(contractAddress, functionCalldata)
         const predicateCalldata = this.webhookPredicate.interface.encodeFunctionData('checkPredicate', [
             this.alertId,
-            Action.SHORT // We want this order to execute on SHORT signals
+            Action.LONG // The webhook server is storing LONG (2) not SHORT (1)
         ]);
         
         // Create the 1inch protocol staticcall predicate
@@ -321,7 +325,7 @@ class YetiEndToEndTest {
         console.log(`   ${this.webhookServerUrl}/webhook/${this.webhookId}`);
         console.log('\n3. Set the alert message to:');
         console.log('   {');
-        console.log('     "action": "SHORT"');
+        console.log('     "action": "LONG"');
         console.log('   }');
         console.log('\n4. Set the alert condition to trigger when you want the order to execute');
         console.log('5. Save the alert');
@@ -343,7 +347,7 @@ class YetiEndToEndTest {
                 console.log('\n🚀 Alert received!');
                 console.log(`   Raw Alert ID: ${alertId}`);
                 console.log(`   Expected Alert ID: ${this.alertId}`);
-                console.log(`   Action: ${action} (${Number(action) === Action.SHORT ? 'SHORT' : Number(action) === Action.LONG ? 'LONG' : 'NONE'})`);
+                console.log(`   Action: ${action} (${Number(action) === Action.LONG ? 'SHORT' : Number(action) === Action.LONG ? 'LONG' : 'NONE'})`);                
                 console.log(`   Timestamp: ${timestamp}`);
                 
                 if (event) {
@@ -362,7 +366,7 @@ class YetiEndToEndTest {
                     
                     // Verify predicate now passes
                     try {
-                        const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.SHORT);
+                        const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.LONG);
                         console.log(`✅ Predicate check: ${predicateResult}`);
                         
                         if (predicateResult) {
@@ -386,15 +390,15 @@ class YetiEndToEndTest {
                 
                 try {
                     const alertData = await this.webhookOracle.getAlert(this.alertId);
-                    if (Number(alertData.action) === Action.SHORT && Number(alertData.timestamp) > 0) {
+                    if (Number(alertData.action) === Action.LONG && Number(alertData.timestamp) > 0) {
                         clearInterval(pollInterval);
                         console.log('\n🚀 Alert detected via polling!');
                         console.log(`   Alert ID: ${alertData.alertId}`);
-                        console.log(`   Action: ${alertData.action} (SHORT)`);
+                        console.log(`   Action: ${alertData.action} (LONG)`);
                         console.log(`   Timestamp: ${alertData.timestamp}`);
                         
                         // Verify predicate
-                        const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.SHORT);
+                        const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.LONG);
                         console.log(`✅ Predicate check: ${predicateResult}`);
                         
                         if (predicateResult) {
@@ -436,7 +440,7 @@ class YetiEndToEndTest {
         
         try {
             // Double check the predicate before filling
-            const predicateCheck = await this.webhookPredicate.checkPredicate(this.alertId, Action.SHORT);
+            const predicateCheck = await this.webhookPredicate.checkPredicate(this.alertId, Action.LONG);
             console.log(`🔍 Pre-fill predicate check: ${predicateCheck}`);
             
             if (!predicateCheck) {
@@ -460,10 +464,14 @@ class YetiEndToEndTest {
             
             // Execute the order as taker
             console.log('🔄 Executing order on 1inch protocol...');
+            const takerNonce = await this.provider.getTransactionCount(this.taker.address, 'pending');
+            console.log(`   Using taker nonce: ${takerNonce}`);
+            
             const fillTx = await this.taker.sendTransaction({
                 to: LIMIT_ORDER_PROTOCOL,
                 data: fillOrderCalldata,
-                gasLimit: 800000 // Increased gas limit
+                gasLimit: 800000, // Increased gas limit
+                nonce: takerNonce
             });
             
             const receipt = await fillTx.wait();
@@ -514,7 +522,7 @@ class YetiEndToEndTest {
             
             // Additional debugging - check predicate again
             try {
-                const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.SHORT);
+                const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.LONG);
                 console.log(`   Final predicate check: ${predicateResult}`);
             } catch (predicateError) {
                 console.log(`   Predicate check failed: ${predicateError}`);
