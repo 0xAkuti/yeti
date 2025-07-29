@@ -1,2 +1,3 @@
 forge-std/=lib/forge-std/src/
+limit-order-protocol/=lib/limit-order-protocol/contracts/
 solady/=lib/solady/src/
