@@ -156,7 +156,7 @@ class YetiSDKEndToEndTest {
         // Create conditional order using SDK
         const { webhook, orderData, tradingViewSetup } = await this.yeti.createConditionalOrder(
             {
-                sell: { token: USDC, amount: '1000' },
+                sell: { token: USDC, amount: '4000' },
                 buy: { token: WETH },
                 action: 'LONG',
                 oracle: ETH_USD_ORACLE
@@ -317,14 +317,17 @@ class YetiSDKEndToEndTest {
 
 // Run the test
 if (import.meta.url === `file://${process.argv[1]}`) {
-    const webhookUrl = process.argv[2] || process.env.WEBHOOK_URL || 'http://localhost:3001';
+    // Parse arguments properly
+    const useAutoFill = process.argv.includes('--auto-fill');
+    
+    // Get webhook URL from non-flag arguments or environment
+    const nonFlagArgs = process.argv.slice(2).filter(arg => !arg.startsWith('--'));
+    const webhookUrl = nonFlagArgs[0] || process.env.WEBHOOK_URL || 'http://localhost:3001';
     
     console.log(`🌐 Using webhook server: ${webhookUrl}`);
+    console.log(`🤖 Auto-fill mode: ${useAutoFill ? 'enabled' : 'disabled'}`);
     
     const test = new YetiSDKEndToEndTest(webhookUrl);
-    
-    // Choose which version to run
-    const useAutoFill = process.argv.includes('--auto-fill');
     
     if (useAutoFill) {
         test.runWithAutoFill().catch(console.error);
