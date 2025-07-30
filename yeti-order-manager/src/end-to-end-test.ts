@@ -10,11 +10,15 @@ import {
 } from '@1inch/limit-order-sdk';
 
 // Contract addresses
-const WEBHOOK_ORACLE_ADDRESS = '0x1Ae0817d98a8A222235A2383422e1A1c03d73e3a'; // From deployment
-const WEBHOOK_PREDICATE_ADDRESS = '0x3B071F9a25B9Da0193E81F0a68b165d67Adb0714'; // From deployment
+const WEBHOOK_ORACLE_ADDRESS = '0x818eA3862861e82586A4D6E1A78A1a657FC615aa'; // From deployment
+const WEBHOOK_PREDICATE_ADDRESS = '0xaA19aff541ed6eBF528f919592576baB138370DC'; // From deployment
+const CHAINLINK_CALCULATOR_ADDRESS = '0x76f18Cc5F9DB41905a285866B9277Ac451F3f75B'; // From deployment
 const LIMIT_ORDER_PROTOCOL = getAddress('0x111111125421cA6dc452d289314280a0f8842A65');
 const USDC = getAddress('0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48');
 const WETH = getAddress('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
+
+// Chainlink oracle addresses (mainnet)
+const ETH_USD_ORACLE = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
 
 const WEBHOOK_ORACLE_ABI = [
     'function submitAlert(bytes16 _alertId, uint8 _action) external',
@@ -24,6 +28,12 @@ const WEBHOOK_ORACLE_ABI = [
 
 const WEBHOOK_PREDICATE_ABI = [
     'function checkPredicate(bytes16 alertId, uint8 expectedAction) external view returns (bool)'
+];
+
+
+const CHAINLINK_ORACLE_ABI = [
+    'function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
+    'function decimals() external view returns (uint8)'
 ];
 
 const ERC20_ABI = [
@@ -46,6 +56,7 @@ class YetiEndToEndTest {
     private taker: Wallet;
     private webhookOracle: Contract;
     private webhookPredicate: Contract;
+    private ethOracle: Contract;
     private usdc: Contract;
     private weth: Contract;
     private alertId: string = '';
@@ -62,6 +73,7 @@ class YetiEndToEndTest {
         
         this.webhookOracle = new Contract(WEBHOOK_ORACLE_ADDRESS, WEBHOOK_ORACLE_ABI, this.provider);
         this.webhookPredicate = new Contract(WEBHOOK_PREDICATE_ADDRESS, WEBHOOK_PREDICATE_ABI, this.provider);
+        this.ethOracle = new Contract(ETH_USD_ORACLE, CHAINLINK_ORACLE_ABI, this.provider);
         this.usdc = new Contract(USDC, ERC20_ABI, this.provider);
         this.weth = new Contract(WETH, ERC20_ABI, this.provider);
     }
@@ -92,7 +104,8 @@ class YetiEndToEndTest {
             await this.setupTokenBalancesAnvil();
         }
         
-        // Approve 1inch protocol
+        // Approve 1inch protocol  
+        // Fixed input model: maker spends USDC, taker provides WETH
         const usdcWithMaker = this.usdc.connect(this.maker) as any;
         const wethWithTaker = this.weth.connect(this.taker) as any;
         
@@ -122,14 +135,14 @@ class YetiEndToEndTest {
                 '0x56BC75E2D630E000' // 100 ETH
             ]);
             
-            // Set USDC balance for maker (10,000 USDC)
+            // Set USDC balance for maker (10,000 USDC) - maker is spending USDC
             await this.provider.send('tenderly_setErc20Balance', [
                 USDC,
                 this.maker.address,
                 '0x' + (10000n * 10n**6n).toString(16) // 10,000 USDC
             ]);
             
-            // Set WETH balance for taker (10 WETH)
+            // Set WETH balance for taker (10 WETH) - taker provides WETH
             await this.provider.send('tenderly_setErc20Balance', [
                 WETH,
                 this.taker.address,
@@ -150,14 +163,14 @@ class YetiEndToEndTest {
         const usdcWhale = '0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503';
         const wethWhale = '0x8EB8a3b98659Cce290402893d0123abb75E3ab28';
         
-        // Fund maker with USDC
+        // Fund maker with USDC - maker is spending USDC
         await this.provider.send('anvil_impersonateAccount', [usdcWhale]);
         await this.provider.send('anvil_setBalance', [usdcWhale, '0x56BC75E2D630E000']);
         
         const usdcWithWhale = this.usdc.connect(await this.provider.getSigner(usdcWhale)) as any;
         await usdcWithWhale.transfer(this.maker.address, parseUnits('10000', 6));
         
-        // Fund taker with WETH
+        // Fund taker with WETH - taker provides WETH
         await this.provider.send('anvil_impersonateAccount', [wethWhale]);
         await this.provider.send('anvil_setBalance', [wethWhale, '0x56BC75E2D630E000']);
         
@@ -212,10 +225,14 @@ class YetiEndToEndTest {
     }
 
     private async createLimitOrder() {
-        console.log('\n3️⃣ Creating 1inch limit order with webhook predicate...');
+        console.log('\n3️⃣ Creating 1inch limit order with dynamic pricing...');
+        
+        // Get current ETH price to demonstrate dynamic pricing
+        const [, ethPrice] = await this.ethOracle.latestRoundData();
+        const ethPriceUsd = Number(ethPrice) / 1e8;
+        console.log(`   Current ETH price: $${ethPriceUsd.toFixed(2)}`);
         
         // Create predicate - this should be a staticcall to our WebhookPredicate contract
-        // Format: swap.arbitraryStaticCall(contractAddress, functionCalldata)
         const predicateCalldata = this.webhookPredicate.interface.encodeFunctionData('checkPredicate', [
             this.alertId,
             Action.LONG // The webhook server is storing LONG (2) not SHORT (1)
@@ -231,17 +248,31 @@ class YetiEndToEndTest {
             predicateCalldata
         ]);
         
-        console.log(`   Predicate contract: ${WEBHOOK_PREDICATE_ADDRESS}`);
-        console.log(`   Predicate calldata: ${predicateCalldata}`);
-        console.log(`   Static call predicate: ${staticCallPredicate}`);
+        // Create ChainlinkCalculator extraData for dynamic ETH pricing
+        // Fixed USDC input, dynamic ETH output based on oracle price
+        const takingAmountData = this.createChainlinkExtraDataForETH();
+        console.log(`   ChainlinkCalculator extraData:`, takingAmountData);
         
-        // Create extension with the predicate
+        // Create extension with predicate and only takingAmountData for dynamic ETH calculation
+        // USDC amount stays fixed, only ETH amount is calculated dynamically
+        // SDK will combine: ChainlinkCalculator address + takingAmountData
         const extension = new ExtensionBuilder()
             .withPredicate(staticCallPredicate)
+            .withTakingAmountData(new Address(CHAINLINK_CALCULATOR_ADDRESS), takingAmountData)
             .build();
         
-        console.log(`   Extension encoded: ${extension.encode()}`);
         console.log(`   Extension has predicate: ${extension.hasPredicate}`);
+        console.log(`   Extension has takingAmountData: ${extension.takingAmountData !== '0x'}`);
+        console.log(`   Extension takingAmountData: ${extension.takingAmountData}`);
+        console.log(`   Extension full bytes: ${extension.encode()}`);
+        
+        // Verify the extension encodes ChainlinkCalculator address
+        if (extension.takingAmountData.toLowerCase().includes(CHAINLINK_CALCULATOR_ADDRESS.toLowerCase().slice(2))) {
+            console.log(`   ✅ ChainlinkCalculator address found in extension`);
+        } else {
+            console.log(`   ❌ ChainlinkCalculator address NOT found in extension`);
+            console.log(`   Expected: ${CHAINLINK_CALCULATOR_ADDRESS.toLowerCase()}`);
+        }
         
         // The key to avoiding BitInvalidatedOrder is using a unique nonce in MakerTraits
         // BitInvalidator mode is used when partial fills are disabled (default)
@@ -253,26 +284,53 @@ class YetiEndToEndTest {
         console.log(`   Alert-derived nonce: ${alertIdNonce.toString()}`);
         console.log(`   Using BitInvalidator mode: ${makerTraits.isBitInvalidatorMode()}`);
         
+        // Order: spend fixed USDC to get dynamic ETH amount
+        // USDC amount is fixed, ETH amount calculated dynamically by ChainlinkCalculator
         this.limitOrder = new LimitOrder(
             {
                 maker: new Address(this.maker.address),
-                makerAsset: new Address(USDC),
-                takerAsset: new Address(WETH),
-                makingAmount: parseUnits('1000', 6), // Sell 1000 USDC
-                takingAmount: parseEther('0.5'), // For 0.5 WETH
+                makerAsset: new Address(USDC), // Spending USDC (fixed amount)
+                takerAsset: new Address(WETH), // Getting WETH (dynamic amount)
+                makingAmount: parseUnits('1000', 6), // 1000 USDC (fixed)
+                takingAmount: parseEther('1'), // Upper bound - actual amount calculated by ChainlinkCalculator
                 salt: LimitOrder.buildSalt(extension)
             },
             makerTraits,
             extension
         );
         
-        console.log('✅ Limit order created:');
-        console.log(`   Selling: 1000 USDC`);
-        console.log(`   Buying: 0.5 WETH`);
+        console.log('✅ Dynamic limit order created:');
+        console.log(`   Spending: 1000 USDC (fixed)`);
+        console.log(`   Getting: DYNAMIC ETH (calculated by ChainlinkCalculator)`);
+        console.log(`   💡 ETH amount calculated dynamically using ETH/USD oracle`);
         console.log(`   Predicate: calls checkPredicate(${this.alertId}, LONG)`);
         console.log(`   Alert ID: ${this.alertId}`);
-        console.log(`   Order has extension: ${!this.limitOrder.extension.isEmpty()}`);
+        console.log(`   Order: Fixed USDC input → Dynamic ETH output`);
     }
+    
+    private createChainlinkExtraDataForETH(): string {
+        // For USDC (6 decimals) → WETH (18 decimals) conversion using ETH/USD oracle
+        // Use INVERSE flag to calculate ETH amount from USD amount
+        // Adjust spread to account for decimal difference: USDC(6) → WETH(18) = 10^12 multiplier
+        
+        const INVERSE_FLAG = 0x80;
+        const flags = INVERSE_FLAG.toString(16).padStart(2, '0');
+        
+        const oracle = ETH_USD_ORACLE.slice(2); // ETH/USD oracle
+        // Spread: (10^12 * 10^9) to convert USDC(6) to WETH(18) and account for _SPREAD_DENOMINATOR
+        const spreadWithDecimals = (1e12 * 1e9).toString(16).padStart(64, '0'); 
+        
+        const extraData = '0x' + flags + oracle + spreadWithDecimals;
+        
+        console.log(`   ETH calculation: Using INVERSE flag with decimal-adjusted spread`);
+        console.log(`   Flags: INVERSE(0x${INVERSE_FLAG.toString(16)}) = 0x${flags}`);
+        console.log(`   Spread: 10^12 * 10^9 = 10^21 (${1e21}) for USDC(6)→WETH(18) + spread denominator`);
+        console.log(`   extraData format: flags(${flags}) + oracle + spreadWithDecimals`);
+        console.log(`   extraData length: ${extraData.length} chars, ${(extraData.length-2)/2} bytes`);
+        console.log(`   Expected: 2 + 2 + 40 + 64 = 108 chars (53 bytes)`);
+        return extraData;
+    }
+    
 
     private async signOrder() {
         console.log('\n4️⃣ Signing limit order...');
@@ -332,7 +390,7 @@ class YetiEndToEndTest {
         console.log('\n🔸 PLEASE FOLLOW THESE STEPS:');
         console.log('\n1. Go to TradingView and create a new alert');
         console.log('2. Set the webhook URL to:');
-        console.log(`   ${this.webhookServerUrl}/webhook/${this.webhookId}`);
+        console.log(`   ${this.webhookServerUrl}/webhook/${this.webhookId}/testing/LONG`);
         console.log('\n3. Set the alert message to:');
         console.log('   {');
         console.log('     "action": "LONG"');
@@ -457,14 +515,18 @@ class YetiEndToEndTest {
                 throw new Error('Predicate check failed - order cannot be filled');
             }
             
+            // Test dynamic pricing calculation before execution
+            //await this.testDynamicPricing();
+            
             // Create fill order transaction - use getFillOrderArgsCalldata since we have an extension
+            // Use AmountMode.maker to specify we want to fill the full makingAmount (1000 USDC)
             const fillOrderCalldata = LimitOrderContract.getFillOrderArgsCalldata(
                 this.limitOrder.build(),
                 this.signature,
                 TakerTraits.default()
                     .setExtension(this.limitOrder.extension)
-                    .setAmountMode(AmountMode.taker),
-                this.limitOrder.takingAmount
+                    .setAmountMode(AmountMode.maker),
+                this.limitOrder.makingAmount
             );
             
             console.log('🔄 Preparing transaction...');
