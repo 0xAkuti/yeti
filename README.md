@@ -1,1 +1,1 @@
-# EthGlobal Unite DeFi
+# Yeti
