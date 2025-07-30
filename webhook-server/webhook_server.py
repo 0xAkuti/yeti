@@ -105,6 +105,10 @@ class WebhookServer:
         async def receive_webhook(webhook_id: str, request: Request):
             return await self._handle_webhook(webhook_id, request)
 
+        @self.app.get("/webhook/{webhook_id}/testing/{action}")
+        async def receive_webhook(webhook_id: str, action: str, request: Request):
+            return await self._handle_webhook_testing(webhook_id, action, request)
+
         @self.app.get("/webhooks")
         async def list_webhooks():
             return {"webhooks": self.webhook_manager.list_webhooks()}
@@ -149,6 +153,22 @@ class WebhookServer:
         logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
         
         blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
+        
+        if blockchain_result["success"]:
+            logger.info(f"Alert submitted: TX {blockchain_result['tx_hash']}")
+        else:
+            logger.error(f"Blockchain submission failed: {blockchain_result['error']}")
+            raise HTTPException(status_code=500, detail="Failed to process webhook")
+        
+        return {"status": "received"}
+
+    async def _handle_webhook_testing(self, webhook_id: str, action: str, request: Request) -> dict:
+        logger.info(f"Received webhook: {webhook_id} (testing mode)")
+
+        if not self.webhook_manager.webhook_exists(webhook_id):
+            raise HTTPException(status_code=404, detail="Webhook not found")
+        
+        blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, {"action": action})
         
         if blockchain_result["success"]:
             logger.info(f"Alert submitted: TX {blockchain_result['tx_hash']}")
