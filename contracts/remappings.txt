@@ -1,3 +1,12 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+chainlink-evm/=lib/chainlink-evm/
+erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/
+halmos-cheatcodes/=lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/
 limit-order-protocol/=lib/limit-order-protocol/contracts/
+openzeppelin-contracts/=lib/openzeppelin-contracts/
 solady/=lib/solady/src/
+solidity-utils/=lib/solidity-utils/contracts/
+@chainlink/contracts/src/v0.8/interfaces/=lib/chainlink-evm/contracts/src/v0.8/shared/interfaces
+@chainlink/=lib/chainlink-evm/
+@1inch/solidity-utils/=lib/solidity-utils/
