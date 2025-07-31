@@ -3,12 +3,14 @@ import { WebhookManager } from './webhook-manager.js';
 import { ConditionalOrderBuilder } from './order-builder.js';
 import { AlertMonitor } from './alert-monitor.js';
 import { OrderFiller } from './order-filler.js';
+import { OrderbookClient } from './orderbook/index.js';
 import { ContractAddresses, ConditionalOrderParams, OrderData, WebhookInfo } from './types.js';
 
 export interface YetiSDKConfig {
     provider: JsonRpcProvider;
     signer?: Wallet; // Optional - only needed for order filling
     webhookServerUrl: string;
+    orderbookServerUrl?: string; // Optional - orderbook integration
     contracts: ContractAddresses;
 }
 
@@ -17,6 +19,7 @@ export class YetiSDK {
     public readonly orderBuilder: ConditionalOrderBuilder;
     public readonly monitor: AlertMonitor;
     public readonly filler: OrderFiller;
+    public readonly orderbook: OrderbookClient;
     
     private config: YetiSDKConfig;
 
@@ -36,6 +39,27 @@ export class YetiSDK {
             this.filler = new Proxy({} as OrderFiller, {
                 get: () => {
                     throw new Error('OrderFiller requires a signer. Initialize YetiSDK with a signer to use order filling functionality.');
+                }
+            });
+        }
+
+        // OrderbookClient is optional
+        if (config.orderbookServerUrl) {
+            this.orderbook = new OrderbookClient({
+                baseUrl: config.orderbookServerUrl,
+                timeout: 10000,
+                retries: 3,
+                retryDelay: 1000
+            });
+            
+            // Inject orderbook client into order builder and monitor
+            this.orderBuilder.setOrderbookClient(this.orderbook);
+            this.monitor.setOrderbookClient(this.orderbook);
+        } else {
+            // Create a placeholder that throws helpful errors
+            this.orderbook = new Proxy({} as OrderbookClient, {
+                get: () => {
+                    throw new Error('OrderbookClient requires orderbookServerUrl in config. Add orderbookServerUrl to YetiSDKConfig to use orderbook functionality.');
                 }
             });
         }

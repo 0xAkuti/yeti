@@ -6,12 +6,15 @@ import {
 } from '@1inch/limit-order-sdk';
 import { Contract, parseUnits, parseEther } from 'ethers';
 import { ConditionalOrderParams, OrderData, Action, ContractAddresses } from './types.js';
+import { CreateOrderRequest, OrderbookClient } from './orderbook/index.js';
 
 export class ConditionalOrderBuilder {
     private contracts: ContractAddresses;
+    private orderbookClient?: OrderbookClient;
 
-    constructor(contracts: ContractAddresses) {
+    constructor(contracts: ContractAddresses, orderbookClient?: OrderbookClient) {
         this.contracts = contracts;
+        this.orderbookClient = orderbookClient;
     }
 
     buildWebhookOrder(params: ConditionalOrderParams, alertId: string, maker: string): OrderData {
@@ -168,5 +171,96 @@ export class ConditionalOrderBuilder {
                 message: value
             }
         };
+    }
+
+    /**
+     * Convert OrderData to orderbook server format
+     */
+    convertToOrderbookFormat(
+        orderData: OrderData, 
+        signature: string, 
+        webhookId: string, 
+        chainId: number = 1,
+        expiresAt?: Date
+    ): CreateOrderRequest {
+        const orderStruct = orderData.order.build();
+        
+        return {
+            order_hash: orderData.order.getOrderHash(chainId),
+            chain_id: chainId,
+            maker: orderStruct.maker,
+            maker_asset: orderStruct.makerAsset,
+            taker_asset: orderStruct.takerAsset,
+            making_amount: orderStruct.makingAmount.toString(),
+            taking_amount: orderStruct.takingAmount.toString(),
+            salt: orderStruct.salt.toString(),
+            maker_traits: orderStruct.makerTraits.toString(),
+            extension: orderData.order.extension?.encode() || '',
+            receiver: orderStruct.receiver,
+            signature,
+            alert_id: orderData.alertId,
+            webhook_id: webhookId,
+            expires_at: expiresAt?.toISOString()
+        };
+    }
+
+    /**
+     * Submit order to orderbook server
+     */
+    async submitToOrderbook(
+        orderData: OrderData,
+        signature: string,
+        webhookId: string,
+        chainId: number = 1,
+        expiresAt?: Date
+    ): Promise<string> {
+        if (!this.orderbookClient) {
+            throw new Error('OrderbookClient not available. Initialize YetiSDK with orderbookServerUrl to use this feature.');
+        }
+
+        const orderRequest = this.convertToOrderbookFormat(
+            orderData, 
+            signature, 
+            webhookId, 
+            chainId, 
+            expiresAt
+        );
+
+        const result = await this.orderbookClient.submitOrder(orderRequest);
+        return result.order_id;
+    }
+
+    /**
+     * Create order and submit to orderbook in one step
+     */
+    async createAndSubmitOrder(
+        params: ConditionalOrderParams,
+        alertId: string,
+        maker: string,
+        signature: string,
+        webhookId: string,
+        chainId: number = 1,
+        expiresAt?: Date
+    ): Promise<{ orderData: OrderData; orderId: string }> {
+        // Build the order
+        const orderData = this.buildWebhookOrder(params, alertId, maker);
+        
+        // Submit to orderbook
+        const orderId = await this.submitToOrderbook(
+            orderData, 
+            signature, 
+            webhookId, 
+            chainId, 
+            expiresAt
+        );
+
+        return { orderData, orderId };
+    }
+
+    /**
+     * Set orderbook client (for dependency injection)
+     */
+    setOrderbookClient(client: OrderbookClient): void {
+        this.orderbookClient = client;
     }
 }

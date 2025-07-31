@@ -8,6 +8,10 @@ export { ConditionalOrderBuilder } from './order-builder.js';
 export { AlertMonitor } from './alert-monitor.js';
 export { OrderFiller } from './order-filler.js';
 
+// Orderbook exports
+export { OrderbookClient } from './orderbook/index.js';
+export * from './orderbook/types.js';
+
 // Type exports
 export type {
     ContractAddresses,
