@@ -11,10 +11,11 @@ contract WebhookOracle is OwnableRoles {
     }
 
     struct AlertData {
-        bytes16 alertId;    // UUID raw bytes
-        uint32 timestamp;
-        Action action;
-        // 11 bytes remaining, maybe for nonce?
+        bytes16 alertId;    // 16 bytes - UUID raw bytes
+        uint32 timestamp;   // 4 bytes - block timestamp
+        Action action;      // 1 byte - NONE/SHORT/LONG
+        uint32 nonce;       // 4 bytes - strategy sequence counter
+        // 7 bytes remaining for future use
     }
 
     mapping(bytes16 => AlertData) public alerts;
@@ -24,8 +25,11 @@ contract WebhookOracle is OwnableRoles {
     event AlertSubmitted(
         bytes16 indexed alertId,
         Action action,
-        uint32 timestamp
+        uint32 timestamp,
+        uint32 nonce
     );
+
+    event StrategyReset(bytes16 indexed alertId);
 
     modifier onlySubmitter() {
         _checkRolesOrOwner(SUBMITTER_ROLE);
@@ -49,16 +53,24 @@ contract WebhookOracle is OwnableRoles {
         bytes16 _alertId,
         Action _action
     ) external onlySubmitter {
+        AlertData storage currentAlert = alerts[_alertId];
+        uint32 newNonce = currentAlert.nonce + 1;
+        
         alerts[_alertId] = AlertData({
             alertId: _alertId,
             timestamp: uint32(block.timestamp),
-            action: _action
+            action: _action,
+            nonce: newNonce
         });
 
-        emit AlertSubmitted(_alertId, _action, uint32(block.timestamp));
+        emit AlertSubmitted(_alertId, _action, uint32(block.timestamp), newNonce);
     }
 
     function getAlert(bytes16 _alertId) external view returns (AlertData memory) {
         return alerts[_alertId];
+    }
+
+    function getCurrentNonce(bytes16 _alertId) external view returns (uint32) {
+        return alerts[_alertId].nonce;
     }
 }
