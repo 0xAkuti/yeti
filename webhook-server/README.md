@@ -1,13 +1,14 @@
-# TradingView Webhook Server with Phala TEE
+# TradingView Webhook Server with Stateless Verification
 
-A FastAPI server that receives TradingView webhooks with signature verification and Phala TEE integration.
+A FastAPI server that receives TradingView webhooks with cryptographic verification and blockchain integration.
 
 ## Features
 
-- **Unique webhook URLs**: Each user gets a unique UUID-based webhook endpoint
+- **Stateless operation**: No database required - webhook IDs are cryptographically verified
+- **HMAC-based security**: Webhook IDs contain embedded signatures for authenticity
 - **TradingView verification**: IP whitelisting using official TradingView webhook IPs
-- **Phala TEE integration**: Derives unique keys for each user using TEE
-- **Simple and productive**: Minimal setup, maximum functionality
+- **Blockchain integration**: Direct integration with smart contracts for alert storage
+- **Environment-based secrets**: Configurable HMAC secret for security
 
 ## Setup
 
@@ -18,6 +19,9 @@ uv sync
 
 2. **Set environment variables**:
 ```bash
+# Required: Set your webhook secret for HMAC verification
+export WEBHOOK_SECRET="your-super-secret-key-here"
+# For Phala TEE integration
 export DSTACK_SIMULATOR_ENDPOINT="http://localhost:8090"
 # For ngrok (get from https://dashboard.ngrok.com/get-started/your-authtoken)
 export NGROK_AUTHTOKEN="your-ngrok-authtoken"
@@ -67,11 +71,12 @@ curl -X POST http://localhost:3001/create-webhook
 Response:
 ```json
 {
-  "webhook_id": "123e4567-e89b-12d3-a456-426614174000",
-  "webhook_url": "/webhook/123e4567-e89b-12d3-a456-426614174000",
-  "user": "user-1"
+  "webhook_id": "507f1f77-bcf8-6fdc-8567-0123456789ab",
+  "webhook_url": "/webhook/507f1f77-bcf8-6fdc-8567-0123456789ab"
 }
 ```
+
+**Note**: The webhook ID contains embedded cryptographic verification - no registration or user tracking required!
 
 ### 2. Send webhook (TradingView format)
 ```bash
@@ -97,10 +102,13 @@ curl http://localhost:3001/webhooks
 
 ## Security
 
+- **HMAC Verification**: Webhook IDs contain 4-byte timestamp + 12-byte HMAC signature
+- **Environment Secret**: Uses `WEBHOOK_SECRET` environment variable for signing
+- **Stateless**: No user data stored - all verification done cryptographically
 - **IP Whitelisting**: Only accepts requests from official TradingView IPs:
   - 52.89.214.238
   - 34.212.75.30
   - 54.218.53.128
   - 52.32.178.7
-- Invalid IPs are rejected with 403 status
-- Each user gets a unique TEE-derived key for additional security
+- Invalid IPs or webhook IDs are rejected with 403/404 status
+- **Blockchain Integration**: Direct smart contract storage with bytes16 format
