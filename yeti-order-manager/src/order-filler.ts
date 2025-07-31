@@ -116,4 +116,18 @@ export class OrderFiller {
             return false;
         }
     }
+
+    /**
+     * Get the signer instance (for OrderbookFiller)
+     */
+    getSigner(): Wallet {
+        return this.signer;
+    }
+
+    /**
+     * Get the provider instance (for OrderbookFiller)
+     */
+    getProvider(): JsonRpcProvider {
+        return this.provider;
+    }
 }

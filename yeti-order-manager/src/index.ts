@@ -10,6 +10,7 @@ export { OrderFiller } from './order-filler.js';
 
 // Orderbook exports
 export { OrderbookClient } from './orderbook/index.js';
+export { OrderbookFiller } from './orderbook-filler.js';
 export * from './orderbook/types.js';
 
 // Type exports

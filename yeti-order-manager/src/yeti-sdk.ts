@@ -4,6 +4,7 @@ import { ConditionalOrderBuilder } from './order-builder.js';
 import { AlertMonitor } from './alert-monitor.js';
 import { OrderFiller } from './order-filler.js';
 import { OrderbookClient } from './orderbook/index.js';
+import { OrderbookFiller } from './orderbook-filler.js';
 import { ContractAddresses, ConditionalOrderParams, OrderData, WebhookInfo } from './types.js';
 
 export interface YetiSDKConfig {
@@ -20,6 +21,7 @@ export class YetiSDK {
     public readonly monitor: AlertMonitor;
     public readonly filler: OrderFiller;
     public readonly orderbook: OrderbookClient;
+    public readonly orderbookFiller: OrderbookFiller;
     
     private config: YetiSDKConfig;
 
@@ -52,14 +54,35 @@ export class YetiSDK {
                 retryDelay: 1000
             });
             
-            // Inject orderbook client into order builder and monitor
+            // Inject orderbook client into order builder
             this.orderBuilder.setOrderbookClient(this.orderbook);
-            this.monitor.setOrderbookClient(this.orderbook);
+
+            // OrderbookFiller requires both orderbook and signer
+            if (config.signer) {
+                this.orderbookFiller = new OrderbookFiller(
+                    this.orderbook,
+                    config.provider,
+                    config.signer,
+                    config.contracts
+                );
+            } else {
+                this.orderbookFiller = new Proxy({} as OrderbookFiller, {
+                    get: () => {
+                        throw new Error('OrderbookFiller requires both orderbookServerUrl and signer in config.');
+                    }
+                });
+            }
         } else {
-            // Create a placeholder that throws helpful errors
+            // Create placeholders that throw helpful errors
             this.orderbook = new Proxy({} as OrderbookClient, {
                 get: () => {
                     throw new Error('OrderbookClient requires orderbookServerUrl in config. Add orderbookServerUrl to YetiSDKConfig to use orderbook functionality.');
+                }
+            });
+            
+            this.orderbookFiller = new Proxy({} as OrderbookFiller, {
+                get: () => {
+                    throw new Error('OrderbookFiller requires orderbookServerUrl in config. Add orderbookServerUrl to YetiSDKConfig to use orderbook filling functionality.');
                 }
             });
         }

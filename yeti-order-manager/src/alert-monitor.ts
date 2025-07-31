@@ -1,18 +1,15 @@
 import { JsonRpcProvider, Contract, EventLog } from 'ethers';
 import { AlertEvent, Action, ContractAddresses } from './types.js';
-import { OrderbookClient } from './orderbook/index.js';
 
 export class AlertMonitor {
     private provider: JsonRpcProvider;
     private contracts: ContractAddresses;
     private webhookOracle: Contract;
     private webhookPredicate: Contract;
-    private orderbookClient?: OrderbookClient;
 
-    constructor(provider: JsonRpcProvider, contracts: ContractAddresses, orderbookClient?: OrderbookClient) {
+    constructor(provider: JsonRpcProvider, contracts: ContractAddresses) {
         this.provider = provider;
         this.contracts = contracts;
-        this.orderbookClient = orderbookClient;
         
         const webhookOracleAbi = [
             'function getAlert(bytes16 _alertId) external view returns (tuple(bytes16 alertId, uint32 timestamp, uint8 action))',
@@ -48,9 +45,6 @@ export class AlertMonitor {
                             resolved = true;
                             this.webhookOracle.removeAllListeners('AlertSubmitted');
                             
-                            // Trigger orderbook orders if available
-                            await this.triggerOrderbookOrders(eventAlertId);
-                            
                             resolve({
                                 alertId: eventAlertId,
                                 action: Number(action) as Action,
@@ -83,9 +77,6 @@ export class AlertMonitor {
                         if (predicateResult && !resolved) {
                             resolved = true;
                             this.webhookOracle.removeAllListeners('AlertSubmitted');
-                            
-                            // Trigger orderbook orders if available
-                            await this.triggerOrderbookOrders(alertData.alertId);
                             
                             resolve({
                                 alertId: alertData.alertId,
@@ -130,73 +121,6 @@ export class AlertMonitor {
         } catch (error) {
             throw new Error(`Failed to get alert ${alertId}: ${error}`);
         }
-    }
-
-    /**
-     * Trigger all orders in the orderbook for a given alert ID
-     */
-    private async triggerOrderbookOrders(alertId: string): Promise<void> {
-        if (!this.orderbookClient) {
-            console.log('No orderbook client available, skipping order triggering');
-            return;
-        }
-
-        try {
-            const result = await this.orderbookClient.triggerOrdersByAlert(alertId);
-            console.log(`📦 Triggered ${result.updated_count} orders in orderbook for alert ${alertId}`);
-        } catch (error) {
-            console.error(`Failed to trigger orderbook orders for alert ${alertId}:`, error);
-        }
-    }
-
-    /**
-     * Set orderbook client for dependency injection
-     */
-    setOrderbookClient(client: OrderbookClient): void {
-        this.orderbookClient = client;
-    }
-
-    /**
-     * Check if orderbook integration is available
-     */
-    hasOrderbookIntegration(): boolean {
-        return !!this.orderbookClient;
-    }
-
-    /**
-     * Watch for alerts and automatically trigger orderbook orders
-     * This is useful for backend services that want to automatically
-     * trigger orders when alerts fire
-     */
-    async startOrderbookMonitoring(alertIds: string[]): Promise<void> {
-        if (!this.orderbookClient) {
-            throw new Error('OrderbookClient not available. Cannot start orderbook monitoring.');
-        }
-
-        console.log(`🔍 Starting orderbook monitoring for ${alertIds.length} alerts...`);
-
-        // Listen for any AlertSubmitted events
-        this.webhookOracle.on('AlertSubmitted', async (eventAlertId: string, action: number, timestamp: number, event: EventLog) => {
-            const alertId = eventAlertId.toString().toLowerCase();
-            
-            // Check if this is one of our monitored alerts
-            if (alertIds.some(id => id.toLowerCase() === alertId)) {
-                console.log(`🚨 Alert triggered: ${alertId}, action: ${action}`);
-                
-                try {
-                    // Verify predicate passes
-                    const predicateResult = await this.webhookPredicate.checkPredicate(eventAlertId, action);
-                    
-                    if (predicateResult) {
-                        await this.triggerOrderbookOrders(eventAlertId);
-                    }
-                } catch (error) {
-                    console.error(`Error processing alert ${alertId}:`, error);
-                }
-            }
-        });
-
-        console.log('✅ Orderbook monitoring started');
     }
 
     /**
