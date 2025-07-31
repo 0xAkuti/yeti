@@ -6,7 +6,55 @@ import { OrderStatus } from '../database/types.js';
 const router = Router();
 const orderRepo = new OrderRepository();
 
-// POST /orders - Create new order
+/**
+ * @swagger
+ * /api/orders:
+ *   post:
+ *     summary: Create a new order
+ *     description: Creates a new limit order in the orderbook
+ *     tags: [Orders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateOrderRequest'
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 order_id:
+ *                   type: string
+ *                   example: "12345"
+ *                 message:
+ *                   type: string
+ *                   example: "Order created successfully"
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Order with this hash already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/', async (req: Request, res: Response) => {
     try {
         const orderData: CreateOrderRequest = req.body;
@@ -41,7 +89,106 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// GET /orders - Get orders with filtering
+/**
+ * @swagger
+ * /api/orders:
+ *   get:
+ *     summary: Get orders with filtering
+ *     description: Retrieves orders from the orderbook with optional filtering and pagination
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, triggered, partially_filled, filled, cancelled, expired]
+ *         description: Filter by order status
+ *       - in: query
+ *         name: maker
+ *         schema:
+ *           type: string
+ *         description: Filter by maker address
+ *       - in: query
+ *         name: maker_asset
+ *         schema:
+ *           type: string
+ *         description: Filter by maker asset address
+ *       - in: query
+ *         name: taker_asset
+ *         schema:
+ *           type: string
+ *         description: Filter by taker asset address
+ *       - in: query
+ *         name: token_pair
+ *         schema:
+ *           type: string
+ *         description: Filter by token pair
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 1000
+ *           default: 100
+ *         description: Number of orders to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Number of orders to skip
+ *       - in: query
+ *         name: order_by
+ *         schema:
+ *           type: string
+ *           enum: [created_at, expires_at]
+ *           default: created_at
+ *         description: Field to order by
+ *       - in: query
+ *         name: order_direction
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Order direction
+ *     responses:
+ *       200:
+ *         description: Orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Order'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 150
+ *                     limit:
+ *                       type: integer
+ *                       example: 100
+ *                     offset:
+ *                       type: integer
+ *                       example: 0
+ *                     has_more:
+ *                       type: boolean
+ *                       example: true
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/', async (req: Request, res: Response) => {
     try {
         const filters: OrderFilters = {
@@ -77,7 +224,46 @@ router.get('/', async (req: Request, res: Response) => {
     }
 });
 
-// GET /orders/:id - Get order by ID
+/**
+ * @swagger
+ * /api/orders/{id}:
+ *   get:
+ *     summary: Get order by ID
+ *     description: Retrieves a specific order by its internal ID
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Internal order ID
+ *     responses:
+ *       200:
+ *         description: Order retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/:id', async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -102,7 +288,46 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 });
 
-// GET /orders/hash/:orderHash - Get order by hash
+/**
+ * @swagger
+ * /api/orders/hash/{orderHash}:
+ *   get:
+ *     summary: Get order by hash
+ *     description: Retrieves a specific order by its order hash
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: orderHash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order hash
+ *     responses:
+ *       200:
+ *         description: Order retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Order'
+ *       404:
+ *         description: Order not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/hash/:orderHash', async (req: Request, res: Response) => {
     try {
         const { orderHash } = req.params;
@@ -127,7 +352,54 @@ router.get('/hash/:orderHash', async (req: Request, res: Response) => {
     }
 });
 
-// PATCH /orders/:orderHash - Update order
+/**
+ * @swagger
+ * /api/orders/hash/{orderHash}:
+ *   patch:
+ *     summary: Update order
+ *     description: Updates an existing order by hash
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: orderHash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order hash
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, triggered, partially_filled, filled, cancelled, expired]
+ *               filled_amount:
+ *                 type: string
+ *               remaining_amount:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Order updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       404:
+ *         description: Order not found or no changes made
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.patch('/hash/:orderHash', async (req: Request, res: Response) => {
     try {
         const { orderHash } = req.params;
@@ -154,7 +426,40 @@ router.patch('/hash/:orderHash', async (req: Request, res: Response) => {
     }
 });
 
-// DELETE /orders/:orderHash - Delete order
+/**
+ * @swagger
+ * /api/orders/hash/{orderHash}:
+ *   delete:
+ *     summary: Delete order
+ *     description: Deletes an order by hash
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: orderHash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order hash
+ *     responses:
+ *       200:
+ *         description: Order deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       404:
+ *         description: Order not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.delete('/hash/:orderHash', async (req: Request, res: Response) => {
     try {
         const { orderHash } = req.params;
@@ -179,7 +484,42 @@ router.delete('/hash/:orderHash', async (req: Request, res: Response) => {
     }
 });
 
-// GET /orders/alert/:alertId - Get orders by alert ID
+/**
+ * @swagger
+ * /api/orders/alert/{alertId}:
+ *   get:
+ *     summary: Get orders by alert ID
+ *     description: Retrieves all orders associated with a specific alert ID
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: alertId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Alert ID
+ *     responses:
+ *       200:
+ *         description: Orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Order'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/alert/:alertId', async (req: Request, res: Response) => {
     try {
         const { alertId } = req.params;
@@ -198,7 +538,42 @@ router.get('/alert/:alertId', async (req: Request, res: Response) => {
     }
 });
 
-// GET /orders/:orderHash/fills - Get order fills
+/**
+ * @swagger
+ * /api/orders/hash/{orderHash}/fills:
+ *   get:
+ *     summary: Get order fills
+ *     description: Retrieves all fills for a specific order
+ *     tags: [Order Fills]
+ *     parameters:
+ *       - in: path
+ *         name: orderHash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order hash
+ *     responses:
+ *       200:
+ *         description: Order fills retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/OrderFill'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/hash/:orderHash/fills', async (req: Request, res: Response) => {
     try {
         const { orderHash } = req.params;
@@ -217,7 +592,63 @@ router.get('/hash/:orderHash/fills', async (req: Request, res: Response) => {
     }
 });
 
-// POST /orders/:orderHash/fills - Record order fill
+/**
+ * @swagger
+ * /api/orders/hash/{orderHash}/fills:
+ *   post:
+ *     summary: Record order fill
+ *     description: Records a new fill for an order
+ *     tags: [Order Fills]
+ *     parameters:
+ *       - in: path
+ *         name: orderHash
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Order hash
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [taker, filled_amount, transaction_hash, block_number]
+ *             properties:
+ *               taker:
+ *                 type: string
+ *                 description: Taker address
+ *               filled_amount:
+ *                 type: string
+ *                 description: Amount filled in this transaction
+ *               transaction_hash:
+ *                 type: string
+ *                 description: Transaction hash of the fill
+ *               block_number:
+ *                 type: number
+ *                 description: Block number where the fill occurred
+ *               gas_used:
+ *                 type: number
+ *                 description: Gas used for the transaction (optional)
+ *     responses:
+ *       201:
+ *         description: Order fill recorded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/hash/:orderHash/fills', async (req: Request, res: Response) => {
     try {
         const { orderHash } = req.params;
@@ -251,7 +682,44 @@ router.post('/hash/:orderHash/fills', async (req: Request, res: Response) => {
     }
 });
 
-// POST /orders/alert/:alertId/trigger - Mark orders as triggered when alert fires
+/**
+ * @swagger
+ * /api/orders/alert/{alertId}/trigger:
+ *   post:
+ *     summary: Trigger orders by alert ID
+ *     description: Marks all orders associated with an alert as triggered when the alert fires
+ *     tags: [Orders]
+ *     parameters:
+ *       - in: path
+ *         name: alertId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Alert ID
+ *     responses:
+ *       200:
+ *         description: Orders marked as triggered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "5 order(s) marked as triggered"
+ *                 updated_count:
+ *                   type: number
+ *                   example: 5
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/alert/:alertId/trigger', async (req: Request, res: Response) => {
     try {
         const { alertId } = req.params;
