@@ -19,8 +19,6 @@ uv sync
 
 2. **Set environment variables**:
 ```bash
-# Required: Set your webhook secret for HMAC verification
-export WEBHOOK_SECRET="your-super-secret-key-here"
 # For Phala TEE integration
 export DSTACK_SIMULATOR_ENDPOINT="http://localhost:8090"
 # For ngrok (get from https://dashboard.ngrok.com/get-started/your-authtoken)
@@ -103,7 +101,7 @@ curl http://localhost:3001/webhooks
 ## Security
 
 - **HMAC Verification**: Webhook IDs contain 4-byte timestamp + 12-byte HMAC signature
-- **Environment Secret**: Uses `WEBHOOK_SECRET` environment variable for signing
+- **TEE-Derived Secret**: Uses Phala TEE to derive cryptographic secret for signing
 - **Stateless**: No user data stored - all verification done cryptographically
 - **IP Whitelisting**: Only accepts requests from official TradingView IPs:
   - 52.89.214.238
