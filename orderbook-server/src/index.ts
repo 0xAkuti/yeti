@@ -6,6 +6,8 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import DatabaseConnection from './database/connection.js';
 import MigrationManager from './database/migrate.js';
+import { OrderRepository } from './database/repository.js';
+import { AlertMonitor, AlertMonitorConfig } from './services/alert-monitor.js';
 import ordersRouter from './routes/orders.js';
 import statsRouter from './routes/stats.js';
 
@@ -14,6 +16,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+// Global AlertMonitor instance
+let alertMonitor: AlertMonitor | null = null;
 
 // Swagger configuration
 const swaggerOptions = {
@@ -146,7 +151,7 @@ app.use((req, res, next) => {
  * /health:
  *   get:
  *     summary: Health check endpoint
- *     description: Returns the health status of the server
+ *     description: Returns the health status of the server and AlertMonitor
  *     tags: [Health]
  *     responses:
  *       200:
@@ -168,14 +173,56 @@ app.use((req, res, next) => {
  *                 database:
  *                   type: string
  *                   example: "/path/to/database.db"
+ *                 alertMonitor:
+ *                   type: object
+ *                   properties:
+ *                     enabled:
+ *                       type: boolean
+ *                     running:
+ *                       type: boolean
+ *                     providerUrl:
+ *                       type: string
+ *                     currentBlock:
+ *                       type: number
  */
-app.get('/health', (req, res) => {
-    res.json({
+app.get('/health', async (_req, res) => {
+    const healthData: any = {
         success: true,
         message: 'Yeti Orderbook Server is running',
         timestamp: new Date().toISOString(),
         database: DatabaseConnection.getDatabasePath()
-    });
+    };
+
+    // Add AlertMonitor status if available
+    if (alertMonitor) {
+        const status = alertMonitor.getStatus();
+        try {
+            const currentBlock = await alertMonitor.getCurrentBlock();
+            healthData.alertMonitor = {
+                enabled: true,
+                running: status.isRunning,
+                providerUrl: status.providerUrl,
+                currentBlock,
+                reconnectAttempts: status.reconnectAttempts,
+                contracts: status.contractAddresses
+            };
+        } catch (error) {
+            healthData.alertMonitor = {
+                enabled: true,
+                running: false,
+                error: 'Failed to connect to blockchain',
+                providerUrl: status.providerUrl,
+                reconnectAttempts: status.reconnectAttempts
+            };
+        }
+    } else {
+        healthData.alertMonitor = {
+            enabled: false,
+            message: 'AlertMonitor not configured'
+        };
+    }
+
+    res.json(healthData);
 });
 
 // API routes
@@ -222,7 +269,7 @@ app.use('/api/stats', statsRouter);
  *                       type: string
  *                       example: "/docs"
  */
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
     res.json({
         name: 'Yeti Orderbook Server',
         version: '1.0.0',
@@ -237,7 +284,7 @@ app.get('/', (req, res) => {
 });
 
 // Error handling middleware
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('Unhandled error:', error);
     res.status(500).json({
         error: 'Internal server error',
@@ -262,6 +309,36 @@ async function startServer() {
         const migrationManager = new MigrationManager();
         await migrationManager.runMigrations();
         
+        // Initialize AlertMonitor if blockchain configuration is provided
+        const alertMonitorEnabled = process.env.ALERT_MONITOR_ENABLED !== 'false';
+        
+        if (alertMonitorEnabled && process.env.RPC_URL && process.env.WEBHOOK_ORACLE_ADDRESS && process.env.WEBHOOK_PREDICATE_ADDRESS) {
+            console.log('🔍 Initializing AlertMonitor...');
+            
+            const alertConfig: AlertMonitorConfig = {
+                providerUrl: process.env.RPC_URL,
+                webhookOracleAddress: process.env.WEBHOOK_ORACLE_ADDRESS,
+                webhookPredicateAddress: process.env.WEBHOOK_PREDICATE_ADDRESS,
+                reconnectDelay: parseInt(process.env.RECONNECT_DELAY || '5000'),
+                maxReconnectAttempts: parseInt(process.env.MAX_RECONNECT_ATTEMPTS || '10'),
+                pollInterval: parseInt(process.env.POLL_INTERVAL || '30000')
+            };
+            
+            const orderRepo = new OrderRepository();
+            alertMonitor = new AlertMonitor(alertConfig, orderRepo);
+            
+            try {
+                await alertMonitor.start();
+                console.log('✅ AlertMonitor started successfully');
+            } catch (error) {
+                console.error('⚠️ AlertMonitor failed to start:', error);
+                console.log('📝 Server will continue without blockchain monitoring');
+            }
+        } else {
+            console.log('ℹ️ AlertMonitor disabled or missing blockchain configuration');
+            console.log('📝 Set RPC_URL, WEBHOOK_ORACLE_ADDRESS, and WEBHOOK_PREDICATE_ADDRESS to enable');
+        }
+        
         // Start server
         app.listen(PORT, () => {
             console.log(`✅ Server running on port ${PORT}`);
@@ -269,6 +346,13 @@ async function startServer() {
             console.log(`📚 API info: http://localhost:${PORT}/`);
             console.log(`🚀 Swagger UI: http://localhost:${PORT}/docs`);
             console.log(`📁 Database: ${DatabaseConnection.getDatabasePath()}`);
+            
+            if (alertMonitor) {
+                const status = alertMonitor.getStatus();
+                console.log(`🔍 AlertMonitor: ${status.isRunning ? 'Running' : 'Stopped'}`);
+                console.log(`🔗 RPC: ${status.providerUrl}`);
+                console.log(`🏛️ Oracle: ${status.contractAddresses.webhookOracle}`);
+            }
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);
@@ -277,17 +361,20 @@ async function startServer() {
 }
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+async function shutdown() {
     console.log('\n🛑 Shutting down server...');
+    
+    if (alertMonitor) {
+        console.log('🔍 Stopping AlertMonitor...');
+        await alertMonitor.stop();
+    }
+    
     DatabaseConnection.closeConnection();
     process.exit(0);
-});
+}
 
-process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down server...');
-    DatabaseConnection.closeConnection();
-    process.exit(0);
-});
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 // Start the server
 startServer();
