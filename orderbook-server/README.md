@@ -1,26 +1,54 @@
 # Yeti Orderbook Server
 
-Order storage and discovery server for Yeti conditional orders. Provides a REST API for storing signed limit orders and discovering profitable orders for takers.
+A comprehensive orderbook server for Yeti conditional orders with **automatic blockchain monitoring** and order state management. Provides a REST API for storing signed limit orders and automatically triggers them when TradingView alerts fire.
 
 ## Features
 
+- 🔍 **Blockchain Monitoring**: Automatically watches for `AlertSubmitted` events
+- ⚡ **Auto-Triggering**: Updates order status from "pending" → "triggered" when alerts fire
+- 🛡️ **Predicate Validation**: Verifies alert conditions before triggering orders
+- 🔄 **Resilient Connection**: Auto-reconnect with exponential backoff
 - 📦 **SQLite Database** with proper migrations and versioning
 - 🔍 **Order Discovery** with advanced filtering and pagination
 - 📊 **Order Statistics** and analytics
-- 🚀 **High Performance** with indexed queries
+- 🚀 **Swagger UI**: Interactive API documentation
 - 🔒 **Production Ready** with proper error handling and logging
 - 🎯 **Order Lifecycle Management** with proper state tracking
 
+## Architecture
+
+The orderbook server is responsible for:
+
+```
+TradingView → WebhookServer → Smart Contract → AlertSubmitted Event
+                                                        ↓
+                    OrderbookServer (watches blockchain)
+                            ↓
+                    Updates order.status = 'triggered'
+                            ↓
+                    SDK OrderbookFiller (polls & fills)
+```
+
 ## Order Lifecycle
 
-Orders progress through the following states:
+Orders progress through the following states automatically:
 
 1. **`pending`** - Order created and waiting for TradingView alert
-2. **`triggered`** - Alert fired, order condition met, ready for execution
+2. **`triggered`** - **AlertMonitor detects alert and updates status automatically**
 3. **`partially_filled`** - Order partially executed (for partial fills)
 4. **`filled`** - Order completely executed
 5. **`cancelled`** - Order cancelled by maker
 6. **`expired`** - Order expired (if expiry time set)
+
+## AlertMonitor Service
+
+The core component that makes the orderbook server "smart":
+
+- **Event Listening**: Monitors `AlertSubmitted` events on the webhook oracle contract
+- **Order Lookup**: Finds orders in database with matching `alert_id`
+- **Predicate Validation**: Verifies alert conditions using webhook predicate contract
+- **Status Update**: Changes order status from "pending" to "triggered"
+- **Resilient Connection**: Auto-reconnects on network failures
 
 ## Quick Start
 
@@ -29,25 +57,66 @@ Orders progress through the following states:
 npm install
 ```
 
-### 2. Setup Database
-```bash
-# Run migrations
-npm run db:setup
+### 2. Configuration
 
-# Or reset and setup fresh database
-npm run db:reset
+Copy the environment template and configure:
+
+```bash
+cp .env.example .env
 ```
 
-### 3. Start Server
+Essential configuration:
+
+```env
+# Server Configuration
+PORT=3002
+DATABASE_PATH=./data/orderbook.db
+
+# Blockchain Configuration (Required for AlertMonitor)
+RPC_URL=http://localhost:8545
+WEBHOOK_ORACLE_ADDRESS=0xC9481A6935698050E569AcD70078DAD8303871CF
+WEBHOOK_PREDICATE_ADDRESS=0xb7aCdc1Ae11554dfe98aA8791DCEE0F009155D5e
+
+# AlertMonitor Settings
+ALERT_MONITOR_ENABLED=true
+```
+
+### 3. Setup Database
 ```bash
-# Development mode
+npm run db:setup
+```
+
+### 4. Start Server
+```bash
+# Development mode with auto-reload
 npm run dev
 
 # Production mode
 npm run build && npm start
 ```
 
-The server will start on port 3002 by default.
+The server will start with:
+- 🌐 **REST API**: http://localhost:3002
+- 📚 **Swagger UI**: http://localhost:3002/docs  
+- ❤️ **Health Check**: http://localhost:3002/health
+
+### 5. Verify AlertMonitor
+
+Check that blockchain monitoring is working:
+
+```bash
+curl http://localhost:3002/health | jq .alertMonitor
+```
+
+Should show:
+```json
+{
+  "enabled": true,
+  "running": true,
+  "providerUrl": "http://localhost:8545",
+  "currentBlock": 18500000
+}
+```
 
 ## API Endpoints
 
