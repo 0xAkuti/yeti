@@ -128,13 +128,15 @@ export function TradingInterface() {
                 placeholder="0"
                 value={sellAmount}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                className="bg-transparent text-2xl font-semibold outline-none flex-1 mr-4"
+                className="bg-transparent text-2xl font-semibold outline-none flex-1 mr-4 min-w-0"
               />
-              <AssetSelector
-                selectedToken={sellToken}
-                onSelect={setSellToken}
-                tokens={BASE_TOKENS}
-              />
+              <div className="flex-shrink-0">
+                <AssetSelector
+                  selectedToken={sellToken}
+                  onSelect={setSellToken}
+                  tokens={BASE_TOKENS}
+                />
+              </div>
             </div>
             {authenticated && connectedWallet && sellTokenBalance && (
               <>
@@ -204,14 +206,16 @@ export function TradingInterface() {
           </div>
           <div className="bg-gray-700 rounded-xl p-4">
             <div className="flex items-center justify-between">
-              <div className="text-2xl font-semibold text-gray-500">
+              <div className="text-2xl font-semibold text-gray-500 flex-1 min-w-0">
                 {sellAmount && isLimitOrder ? '~' : ''}0
               </div>
-              <AssetSelector
-                selectedToken={buyToken}
-                onSelect={setBuyToken}
-                tokens={BASE_TOKENS.filter(token => token.address !== sellToken.address)}
-              />
+              <div className="flex-shrink-0">
+                <AssetSelector
+                  selectedToken={buyToken}
+                  onSelect={setBuyToken}
+                  tokens={BASE_TOKENS.filter(token => token.address !== sellToken.address)}
+                />
+              </div>
             </div>
           </div>
         </div>
