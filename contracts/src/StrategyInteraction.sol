@@ -20,13 +20,13 @@ contract StrategyInteraction is IPreInteraction {
     }
 
     function preInteraction(
-        IOrderMixin.Order calldata order,
-        bytes calldata extension,
-        bytes32 orderHash,
-        address taker,
+        IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
         uint256 makingAmount,
-        uint256 takingAmount,
-        uint256 remainingMakingAmount,
+        uint256 /* takingAmount */,
+        uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external {
         // Strategy data is passed in the preInteractionData
