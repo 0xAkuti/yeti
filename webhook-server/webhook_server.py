@@ -22,12 +22,21 @@ class TradingViewIPValidator:
     def verify_ip(cls, client_ip: str) -> bool:
         return client_ip in cls.TRADINGVIEW_IPS
 
-def generate_secure_webhook_id(secret: bytes) -> uuid.UUID:
-    # 4 bytes timestamp + 12 bytes HMAC = 16 bytes total
+def generate_webhook_with_secret(secret: bytes) -> tuple[str, str]:
+    # 4 bytes timestamp + 12 bytes HMAC = 16 bytes total for webhook ID
+    # Remaining 20 bytes of HMAC used as verification secret
     timestamp = int(time.time()).to_bytes(4, 'big')
-    signature = hmac.new(secret, timestamp, hashlib.sha256).digest()[:12]
-    webhook_bytes = timestamp + signature
-    return uuid.UUID(bytes=webhook_bytes)
+    full_signature = hmac.new(secret, timestamp, hashlib.sha256).digest()  # 32 bytes
+    
+    # Use first 12 bytes for webhook ID
+    webhook_signature = full_signature[:12]
+    webhook_bytes = timestamp + webhook_signature
+    webhook_id = str(uuid.UUID(bytes=webhook_bytes))
+    
+    # Use remaining 20 bytes as verification secret
+    verification_secret = full_signature[12:].hex()  # 20 bytes as hex string
+    
+    return webhook_id, verification_secret
 
 def verify_webhook_id(webhook_id: str, secret: bytes) -> bool:
     try:
@@ -44,6 +53,35 @@ def verify_webhook_id(webhook_id: str, secret: bytes) -> bool:
         
         # Use constant-time comparison to prevent timing attacks
         return hmac.compare_digest(provided_signature, expected_signature)
+        
+    except (ValueError, TypeError):
+        return False
+
+def verify_webhook_id_and_secret(webhook_id: str, provided_secret: str, master_secret: bytes) -> bool:
+    """Verify both webhook ID and secret in a single HMAC operation"""
+    try:
+        webhook_uuid = uuid.UUID(webhook_id)
+        webhook_bytes = webhook_uuid.bytes
+        
+        if len(webhook_bytes) != 16:
+            return False
+            
+        # Extract timestamp and provided signature from webhook ID
+        timestamp = webhook_bytes[:4]
+        provided_id_signature = webhook_bytes[4:]
+        
+        # Generate the full HMAC once
+        full_signature = hmac.new(master_secret, timestamp, hashlib.sha256).digest()
+        
+        # Expected components
+        expected_id_signature = full_signature[:12]
+        expected_secret = full_signature[12:].hex()
+        
+        # Verify both components with constant-time comparison
+        id_valid = hmac.compare_digest(provided_id_signature, expected_id_signature)
+        secret_valid = hmac.compare_digest(provided_secret, expected_secret)
+        
+        return id_valid and secret_valid
         
     except (ValueError, TypeError):
         return False
@@ -65,14 +103,16 @@ class WebhookManager:
         if self.webhook_secret is None:
             raise RuntimeError("WebhookManager not initialized")
             
-        webhook_uuid = generate_secure_webhook_id(self.webhook_secret)
-        webhook_id = str(webhook_uuid)
+        webhook_id, verification_secret = generate_webhook_with_secret(self.webhook_secret)
         
         logger.info(f"Created secure webhook {webhook_id}")
         
         return {
             "webhook_id": webhook_id,
-            "webhook_url": f"/webhook/{webhook_id}"
+            "webhook_url": f"/webhook/{webhook_id}",
+            "secret": verification_secret,
+            "buy_message": f"buy_{verification_secret}",
+            "sell_message": f"sell_{verification_secret}"
         }
     
     def webhook_exists(self, webhook_id: str) -> bool:
@@ -174,13 +214,17 @@ class WebhookServer:
             logger.warning(f"Unauthorized IP: {client_ip}")
             raise HTTPException(status_code=403, detail="Request not from TradingView IP")
 
-        if not self.webhook_manager.webhook_exists(webhook_id):
-            raise HTTPException(status_code=404, detail="Invalid webhook ID")
-
-        payload = await self._parse_payload(request)
+        action, secret = await self._parse_action_secret(request)
         
-        logger.info(f"Processing webhook {webhook_id} from {client_ip}")
-        logger.debug(f"Payload: {json.dumps(payload, indent=2)}")
+        # Verify webhook ID and secret in one operation
+        if not verify_webhook_id_and_secret(webhook_id, secret, self.webhook_manager.webhook_secret):
+            logger.warning(f"Invalid webhook ID or secret for {webhook_id}")
+            raise HTTPException(status_code=403, detail="Invalid webhook ID or secret")
+        
+        logger.info(f"Processing webhook {webhook_id} with action '{action}' from {client_ip}")
+        
+        # Create payload for blockchain submission
+        payload = {"action": action}
         
         blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
         
