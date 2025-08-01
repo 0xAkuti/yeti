@@ -12,8 +12,8 @@ export class AlertMonitor {
         this.contracts = contracts;
         
         const webhookOracleAbi = [
-            'function getAlert(bytes16 _alertId) external view returns (tuple(bytes16 alertId, uint32 timestamp, uint8 action))',
-            'event AlertSubmitted(bytes16 indexed alertId, uint8 action, uint32 timestamp)'
+            'function getAlert(bytes16 _alertId) external view returns (tuple(bytes16 alertId, uint32 timestamp, uint8 action, uint32 nonce))',
+            'event AlertSubmitted(bytes16 indexed alertId, uint8 action, uint32 timestamp, uint32 nonce)'
         ];
         
         const webhookPredicateAbi = [
@@ -29,7 +29,7 @@ export class AlertMonitor {
             let resolved = false;
             
             // Listen for AlertSubmitted events
-            this.webhookOracle.on('AlertSubmitted', async (eventAlertId: string, action: number, timestamp: number, event: EventLog) => {
+            this.webhookOracle.on('AlertSubmitted', async (eventAlertId: string, action: number, timestamp: number, nonce: number, event: EventLog) => {
                 if (resolved) return;
                 
                 // Check if this is our alert ID
@@ -49,6 +49,7 @@ export class AlertMonitor {
                                 alertId: eventAlertId,
                                 action: Number(action) as Action,
                                 timestamp: Number(timestamp),
+                                nonce: Number(nonce),
                                 blockNumber: event.blockNumber,
                                 transactionHash: event.transactionHash
                             });
@@ -81,7 +82,8 @@ export class AlertMonitor {
                             resolve({
                                 alertId: alertData.alertId,
                                 action: Number(alertData.action) as Action,
-                                timestamp: Number(alertData.timestamp)
+                                timestamp: Number(alertData.timestamp),
+                                nonce: Number(alertData.nonce)
                             });
                         }
                     }
@@ -116,7 +118,8 @@ export class AlertMonitor {
             return {
                 alertId: alertData.alertId,
                 action: Number(alertData.action) as Action,
-                timestamp: Number(alertData.timestamp)
+                timestamp: Number(alertData.timestamp),
+                nonce: Number(alertData.nonce)
             };
         } catch (error) {
             throw new Error(`Failed to get alert ${alertId}: ${error}`);

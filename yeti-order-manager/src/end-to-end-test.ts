@@ -22,8 +22,8 @@ const ETH_USD_ORACLE = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419';
 
 const WEBHOOK_ORACLE_ABI = [
     'function submitAlert(bytes16 _alertId, uint8 _action) external',
-    'function getAlert(bytes16 _alertId) external view returns (tuple(bytes16 alertId, uint32 timestamp, uint8 action))',
-    'event AlertSubmitted(bytes16 indexed alertId, uint8 action, uint32 timestamp)'
+    'function getAlert(bytes16 _alertId) external view returns (tuple(bytes16 alertId, uint32 timestamp, uint8 action, uint32 nonce))',
+    'event AlertSubmitted(bytes16 indexed alertId, uint8 action, uint32 timestamp, uint32 nonce)'
 ];
 
 const WEBHOOK_PREDICATE_ABI = [
@@ -61,6 +61,7 @@ class YetiEndToEndTest {
     private weth: Contract;
     private alertId: string = '';
     private webhookId: string = '';
+    private webhookData: any = {};
     private limitOrder!: LimitOrder;
     private signature!: string;
     private webhookServerUrl: string;
@@ -466,6 +467,7 @@ class YetiEndToEndTest {
                         console.log(`   Alert ID: ${alertData.alertId}`);
                         console.log(`   Action: ${alertData.action} (LONG)`);
                         console.log(`   Timestamp: ${alertData.timestamp}`);
+                        console.log(`   Nonce: ${alertData.nonce}`);
                         
                         // Verify predicate
                         const predicateResult = await this.webhookPredicate.checkPredicate(this.alertId, Action.LONG);

@@ -167,6 +167,9 @@ class YetiSDKEndToEndTest {
         console.log('✅ Conditional order created using SDK!');
         console.log(`   Alert ID: ${orderData.alertId}`);
         console.log(`   Webhook URL: ${webhook.webhookUrl}`);
+        console.log(`   Secret: ${webhook.secret}`);
+        console.log(`   Buy Message: ${webhook.buyMessage}`);
+        console.log(`   Sell Message: ${webhook.sellMessage}`);
         console.log(`   Order Hash: ${orderData.orderHash}`);
         
         // Get signing data
@@ -217,6 +220,7 @@ class YetiSDKEndToEndTest {
             console.log(`   Alert ID: ${alert.alertId}`);
             console.log(`   Action: ${alert.action} (${alert.action === Action.LONG ? 'LONG' : 'SHORT'})`);
             console.log(`   Timestamp: ${alert.timestamp}`);
+            console.log(`   Nonce: ${alert.nonce}`);
             
             if (alert.blockNumber) {
                 console.log(`   Block: ${alert.blockNumber}`);

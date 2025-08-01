@@ -44,6 +44,7 @@ export interface AlertEvent {
     alertId: string;
     action: Action;
     timestamp: number;
+    nonce: number;
     blockNumber?: number;
     transactionHash?: string;
 }
