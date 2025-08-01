@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -16,6 +16,15 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+const corsOptions = {
+    origin: /^http:\/\/localhost:\d{1,5}$/,
+    methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
+    credentials: true,
+  };
+
+app.use(cors(corsOptions));
 
 // Global AlertMonitor instance
 let alertMonitor: AlertMonitor | null = null;
@@ -128,9 +137,6 @@ const specs = swaggerJsdoc(swaggerOptions);
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000'
-}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
