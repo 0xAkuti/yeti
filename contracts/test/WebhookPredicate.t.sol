@@ -9,6 +9,7 @@ contract WebhookPredicateTest is Test {
     WebhookOracle public oracle;
     WebhookPredicate public predicate;
     uint256 public constant MAX_AGE = 3600; // 1 hour
+    bytes16 constant ALERT_ID = 0x550e8400e29b41d4a716446655440000;
 
     function setUp() public {
         oracle = new WebhookOracle();
@@ -16,50 +17,49 @@ contract WebhookPredicateTest is Test {
     }
 
     function test_ValidAlert() public {
-        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
         WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
-        oracle.submitAlert(alertId, action);
+        oracle.submitAlert(ALERT_ID, action);
         
-        assertTrue(predicate.checkPredicate(alertId, action));
+        assertTrue(predicate.checkPredicate(ALERT_ID, action));
     }
 
     function test_NonExistentAlert() public view {
-        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
-        WebhookOracle.Action action = WebhookOracle.Action.SHORT;
-        
-        assertFalse(predicate.checkPredicate(alertId, action));
+        // should fail for all action types
+        assertFalse(predicate.checkPredicate(ALERT_ID, WebhookOracle.Action.NONE));       
+        assertFalse(predicate.checkPredicate(ALERT_ID, WebhookOracle.Action.SHORT));
+        assertFalse(predicate.checkPredicate(ALERT_ID, WebhookOracle.Action.LONG));
+
     }
 
     function test_WrongAction() public {
-        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
         WebhookOracle.Action submitAction = WebhookOracle.Action.SHORT;
         WebhookOracle.Action checkAction = WebhookOracle.Action.LONG;
         
-        oracle.submitAlert(alertId, submitAction);
+        oracle.submitAlert(ALERT_ID, submitAction);
         
-        assertFalse(predicate.checkPredicate(alertId, checkAction));
+        assertFalse(predicate.checkPredicate(ALERT_ID, checkAction));
+        // but correct one is true
+        assertTrue(predicate.checkPredicate(ALERT_ID, submitAction));
     }
 
     function test_ExpiredAlert() public {
-        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
         WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
-        oracle.submitAlert(alertId, action);
+        oracle.submitAlert(ALERT_ID, action);
         
         vm.warp(block.timestamp + MAX_AGE + 1);
         
-        assertFalse(predicate.checkPredicate(alertId, action));
+        assertFalse(predicate.checkPredicate(ALERT_ID, action));
     }
 
     function test_AlmostExpiredAlert() public {
-        bytes16 alertId = 0x550e8400e29b41d4a716446655440000;
         WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
-        oracle.submitAlert(alertId, action);
+        oracle.submitAlert(ALERT_ID, action);
         
         vm.warp(block.timestamp + MAX_AGE);
         
-        assertTrue(predicate.checkPredicate(alertId, action));
+        assertTrue(predicate.checkPredicate(ALERT_ID, action));
     }
 }
