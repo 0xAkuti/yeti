@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useYetiSDK } from '@/hooks/useYetiSDK';
+import { getTokenByAddress, Token } from '@/lib/tokens';
 
 interface Order {
   id: string;
@@ -33,15 +34,26 @@ const ORDER_STATUS_COLORS = {
   expired: 'bg-gray-500/20 text-gray-400 border-gray-500/30'
 };
 
-const TOKEN_ADDRESSES: Record<string, string> = {
-  '0x833589fCD6eDb6E08f4c7C32D4f71b54bda02913': 'USDC',
-  '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2': 'USDT', 
-  '0x4200000000000000000000000000000000000006': 'WETH',
-  '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf': 'cbBTC'
-};
+function getTokenInfo(address: string): { symbol: string; logo: string; decimals: number } {
+  const token = getTokenByAddress(address);
+  return token ? {
+    symbol: token.symbol,
+    logo: token.logoURI || 'https://via.placeholder.com/24/64748b/ffffff?text=?',
+    decimals: token.decimals
+  } : { 
+    symbol: `${address.slice(0, 6)}...${address.slice(-4)}`, 
+    logo: 'https://via.placeholder.com/24/64748b/ffffff?text=?',
+    decimals: 18
+  };
+}
 
-function formatTokenAddress(address: string): string {
-  return TOKEN_ADDRESSES[address] || `${address.slice(0, 6)}...${address.slice(-4)}`;
+function copyToClipboard(text: string, label: string) {
+  navigator.clipboard.writeText(text).then(() => {
+    // You could add a toast notification here
+    console.log(`${label} copied to clipboard:`, text);
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+  });
 }
 
 function formatAmount(amount: string, decimals: number = 18): string {
@@ -61,13 +73,67 @@ function formatDate(dateString: string): string {
   });
 }
 
+function calculateFillPercentage(filledAmount: string, makingAmount: string): number {
+  const filled = parseFloat(filledAmount);
+  const total = parseFloat(makingAmount);
+  if (total === 0) return 0;
+  return Math.min(100, (filled / total) * 100);
+}
+
+type SortField = 'created_at' | 'token_pair' | 'status' | 'making_amount' | 'filled_percentage';
+type SortDirection = 'asc' | 'desc';
+
+interface CopyButtonProps {
+  text: string;
+  displayText: string;
+  label: string;
+}
+
+function CopyButton({ text, displayText, label }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    copyToClipboard(text, label);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center space-x-1 text-gray-300 hover:text-white transition-colors font-mono text-xs"
+    >
+      <span>{displayText}</span>
+      <svg 
+        className={`w-3 h-3 ${copied ? 'text-green-400' : 'text-gray-400'}`} 
+        fill="none" 
+        stroke="currentColor" 
+        viewBox="0 0 24 24"
+      >
+        {copied ? (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        ) : (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        )}
+      </svg>
+    </button>
+  );
+}
+
 export function Dashboard() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
   const { getUserOrders, isReady } = useYetiSDK();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filters and sorting
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [assetFilter, setAssetFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const connectedWallet = wallets[0];
 
@@ -79,6 +145,81 @@ export function Dashboard() {
 
     fetchUserOrders();
   }, [authenticated, connectedWallet, isReady]);
+
+  // Filter and sort orders whenever orders, filters, or sort changes
+  useEffect(() => {
+    console.log('Filtering orders:', { 
+      totalOrders: orders.length, 
+      statusFilter, 
+      assetFilter 
+    });
+    
+    let filtered = [...orders];
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      const beforeStatusFilter = filtered.length;
+      filtered = filtered.filter(order => order.status === statusFilter);
+      console.log(`Status filter applied: ${beforeStatusFilter} -> ${filtered.length}`);
+    }
+
+    // Apply asset filter
+    if (assetFilter !== 'all') {
+      const beforeAssetFilter = filtered.length;
+      filtered = filtered.filter(order => 
+        order.maker_asset.toLowerCase() === assetFilter.toLowerCase() ||
+        order.taker_asset.toLowerCase() === assetFilter.toLowerCase()
+      );
+      console.log(`Asset filter applied: ${beforeAssetFilter} -> ${filtered.length}`, {
+        assetFilter,
+        sampleOrder: filtered[0] ? {
+          maker_asset: filtered[0].maker_asset,
+          taker_asset: filtered[0].taker_asset
+        } : 'no orders'
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (sortField) {
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        case 'token_pair':
+          const aTokenInfo = getTokenInfo(a.maker_asset);
+          const bTokenInfo = getTokenInfo(b.maker_asset);
+          aValue = `${aTokenInfo.symbol}-${getTokenInfo(a.taker_asset).symbol}`;
+          bValue = `${bTokenInfo.symbol}-${getTokenInfo(b.taker_asset).symbol}`;
+          break;
+        case 'status':
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case 'making_amount':
+          aValue = parseFloat(a.making_amount);
+          bValue = parseFloat(b.making_amount);
+          break;
+        case 'filled_percentage':
+          aValue = calculateFillPercentage(a.filled_amount, a.making_amount);
+          bValue = calculateFillPercentage(b.filled_amount, b.making_amount);
+          break;
+        default:
+          aValue = a.created_at;
+          bValue = b.created_at;
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    setFilteredOrders(filtered);
+  }, [orders, statusFilter, assetFilter, sortField, sortDirection]);
 
   const fetchUserOrders = async () => {
     if (!connectedWallet || !getUserOrders) return;
@@ -97,6 +238,23 @@ export function Dashboard() {
       setLoading(false);
     }
   };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Get unique assets for filter dropdown
+  const uniqueAssets = Array.from(new Set([
+    ...orders.flatMap(order => [order.maker_asset, order.taker_asset])
+  ])).map(address => ({
+    address,
+    ...getTokenInfo(address)
+  }));
 
   if (!authenticated || !connectedWallet) {
     return (
@@ -137,7 +295,8 @@ export function Dashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">My Orders</h1>
         <button
@@ -151,94 +310,233 @@ export function Dashboard() {
         </button>
       </div>
 
-      {orders.length === 0 ? (
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+        <div className="flex items-center space-x-2">
+          <label className="text-sm text-gray-400">Status:</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="triggered">Triggered</option>
+            <option value="partially_filled">Partially Filled</option>
+            <option value="filled">Filled</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <label className="text-sm text-gray-400">Asset:</label>
+          <select
+            value={assetFilter}
+            onChange={(e) => setAssetFilter(e.target.value)}
+            className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1 border border-gray-600 focus:border-blue-500 focus:outline-none"
+          >
+            <option value="all">All Assets</option>
+            {uniqueAssets.map((token) => (
+              <option key={token.address} value={token.address}>
+                {token.symbol}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="text-sm text-gray-400">
+          Showing {filteredOrders.length} of {orders.length} orders
+        </div>
+      </div>
+
+      {filteredOrders.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">No orders found</div>
+          <div className="text-gray-400 mb-4">
+            {orders.length === 0 ? 'No orders found' : 'No orders match your filters'}
+          </div>
           <div className="text-sm text-gray-500">
-            Create your first limit order to see it here
+            {orders.length === 0 ? 'Create your first limit order to see it here' : 'Try adjusting your filters'}
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 backdrop-blur-sm"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="text-lg font-semibold text-white">
-                    {formatTokenAddress(order.maker_asset)} → {formatTokenAddress(order.taker_asset)}
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium border ${ORDER_STATUS_COLORS[order.status]}`}>
-                    {order.status.replace('_', ' ')}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-400">Order Hash</div>
-                  <div className="text-xs font-mono text-gray-300">
-                    {order.order_hash.slice(0, 8)}...{order.order_hash.slice(-8)}
-                  </div>
-                </div>
-              </div>
+        <div className="bg-gray-800/30 rounded-lg border border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-800/50 border-b border-gray-700">
+                <tr>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort('token_pair')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Pair</span>
+                      {sortField === 'token_pair' && (
+                        <svg className={`w-3 h-3 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Status</span>
+                      {sortField === 'status' && (
+                        <svg className={`w-3 h-3 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort('making_amount')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Amount</span>
+                      {sortField === 'making_amount' && (
+                        <svg className={`w-3 h-3 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort('filled_percentage')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Filled</span>
+                      {sortField === 'filled_percentage' && (
+                        <svg className={`w-3 h-3 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Created</span>
+                      {sortField === 'created_at' && (
+                        <svg className={`w-3 h-3 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    IDs
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                {filteredOrders.map((order) => {
+                  const makerToken = getTokenInfo(order.maker_asset);
+                  const takerToken = getTokenInfo(order.taker_asset);
+                  const fillPercentage = calculateFillPercentage(order.filled_amount, order.making_amount);
+                  
+                  return (
+                    <tr key={order.id} className="hover:bg-gray-800/50 transition-colors">
+                      {/* Trading Pair */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center -space-x-1">
+                            <img src={makerToken.logo} alt={makerToken.symbol} className="w-6 h-6 rounded-full border border-gray-600" />
+                            <img src={takerToken.logo} alt={takerToken.symbol} className="w-6 h-6 rounded-full border border-gray-600" />
+                          </div>
+                          <div>
+                            <div className="text-white font-medium">
+                              {makerToken.symbol} → {takerToken.symbol}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {formatAmount(order.making_amount, makerToken.decimals)} for {formatAmount(order.taking_amount, takerToken.decimals)}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Selling</div>
-                  <div className="text-white font-medium">
-                    {formatAmount(order.making_amount)} {formatTokenAddress(order.maker_asset)}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">For</div>
-                  <div className="text-white font-medium">
-                    {formatAmount(order.taking_amount)} {formatTokenAddress(order.taker_asset)}
-                  </div>
-                </div>
+                      {/* Status */}
+                      <td className="px-4 py-4">
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium border ${ORDER_STATUS_COLORS[order.status]} inline-block`}>
+                          {order.status.replace('_', ' ')}
+                        </div>
+                      </td>
 
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Filled</div>
-                  <div className="text-white font-medium">
-                    {formatAmount(order.filled_amount)} / {formatAmount(order.making_amount)}
-                  </div>
-                  <div className="w-full bg-gray-700 rounded-full h-2 mt-1">
-                    <div 
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ 
-                        width: `${Math.min(100, (parseFloat(order.filled_amount) / parseFloat(order.making_amount)) * 100)}%` 
-                      }}
-                    />
-                  </div>
-                </div>
+                      {/* Amount */}
+                      <td className="px-4 py-4">
+                        <div className="text-white font-medium">
+                          {formatAmount(order.making_amount, makerToken.decimals)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {makerToken.symbol}
+                        </div>
+                      </td>
 
-                <div>
-                  <div className="text-sm text-gray-400 mb-1">Created</div>
-                  <div className="text-white font-medium">
-                    {formatDate(order.created_at)}
-                  </div>
-                </div>
-              </div>
+                      {/* Filled */}
+                      <td className="px-4 py-4">
+                        <div className="text-white font-medium">
+                          {fillPercentage.toFixed(1)}%
+                        </div>
+                        <div className="w-20 bg-gray-700 rounded-full h-2 mt-1">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${fillPercentage}%` }}
+                          />
+                        </div>
+                      </td>
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-                <div className="flex items-center space-x-4 text-sm text-gray-400">
-                  <span>Alert ID: {order.alert_id.slice(0, 8)}...</span>
-                  <span>Webhook: {order.webhook_id.slice(0, 8)}...</span>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  {order.status === 'pending' && (
-                    <button className="text-red-400 hover:text-red-300 text-sm">
-                      Cancel
-                    </button>
-                  )}
-                  <button className="text-blue-400 hover:text-blue-300 text-sm">
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+                      {/* Created */}
+                      <td className="px-4 py-4 text-white">
+                        {formatDate(order.created_at)}
+                      </td>
+
+                      {/* IDs */}
+                      <td className="px-4 py-4 space-y-1">
+                        <CopyButton 
+                          text={order.order_hash}
+                          displayText={`${order.order_hash.slice(0, 6)}...${order.order_hash.slice(-4)}`}
+                          label="Order Hash"
+                        />
+                        <CopyButton 
+                          text={order.alert_id}
+                          displayText={`${order.alert_id.slice(0, 6)}...${order.alert_id.slice(-4)}`}
+                          label="Alert ID"
+                        />
+                        <CopyButton 
+                          text={order.webhook_id}
+                          displayText={`${order.webhook_id.slice(0, 6)}...${order.webhook_id.slice(-4)}`}
+                          label="Webhook ID"
+                        />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center space-x-2">
+                          {order.status === 'pending' && (
+                            <button className="text-red-400 hover:text-red-300 text-sm transition-colors">
+                              Cancel
+                            </button>
+                          )}
+                          <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                            Details
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
