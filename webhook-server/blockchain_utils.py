@@ -119,8 +119,8 @@ class BlockchainManager:
             # Call contract view function
             result = self.contract.functions.getAlert(alert_id_bytes).call()
             
-            # Parse result tuple (alertId, timestamp, action)
-            _, timestamp, action = result
+            # Parse result tuple (alertId, timestamp, action, nonce)
+            _, timestamp, action, nonce = result
             
             exists = timestamp > 0
             logger.info(f"Alert retrieved: exists={exists}, timestamp={timestamp}, action={self._action_to_name(action)}")
@@ -131,6 +131,7 @@ class BlockchainManager:
                 "timestamp": timestamp,
                 "action": action,
                 "action_name": self._action_to_name(action),
+                "nonce": nonce,
                 "exists": exists
             }
             

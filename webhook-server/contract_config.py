@@ -21,7 +21,8 @@ WEBHOOK_ORACLE_ABI = [
                 "components": [
                     {"name": "alertId", "type": "bytes16"},
                     {"name": "timestamp", "type": "uint32"},
-                    {"name": "action", "type": "uint8"}
+                    {"name": "action", "type": "uint8"},
+                    {"name": "nonce", "type": "uint32"}
                 ]
             }
         ],
