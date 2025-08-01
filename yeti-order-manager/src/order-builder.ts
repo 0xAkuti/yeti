@@ -106,15 +106,19 @@ export class ConditionalOrderBuilder {
         
         // Taking amount is an upper bound - actual amount calculated by ChainlinkCalculator
         // Set reasonable upper bound (e.g., 1 WETH for USDC orders)
-        const takingAmount = parseEther('1');
+        const takingAmount = parseEther('100'); // TODO: set a reasonable upper bound
         
         return { makingAmount, takingAmount };
     }
 
     private parseTokenAmount(amount: string, token: string): bigint {
-        // This should be enhanced to automatically detect token decimals
+        // TODO This should be enhanced to automatically detect token decimals
         // For now, assume common token decimals
         const commonTokens: Record<string, number> = {
+            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913": 6, // USDC on Base
+            "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2": 6, // USDT on Base
+            "0x4200000000000000000000000000000000000006": 18, // WETH on Base
+            "0xcbB7C0000aB88B473b1f5aFd9ef808440eeD33Bf": 8, // cbBTC on Base
             // USDC addresses on different chains
             '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 6, // Mainnet USDC
             '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174': 6, // Polygon USDC
