@@ -16,6 +16,3 @@
 [submodule "contracts/lib/openzeppelin-contracts"]
 	path = contracts/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "yeti-frontend"]
-	path = yeti-frontend
-	url = https://github.com/zanastas/yeti-frontend.git
