@@ -6,6 +6,7 @@ import hashlib
 import time
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse
 from blockchain_utils import BlockchainManager
 from contract_config import CONTRACT_ADDRESS
@@ -155,6 +156,18 @@ class TEEProcessor:
 class WebhookServer:
     def __init__(self):
         self.app = FastAPI(title="TradingView Webhook Server")
+        origins = [
+            "http://localhost",
+            "http://localhost:3008",
+        ]
+
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         self.webhook_manager = WebhookManager()
         self.blockchain_manager = None
         self.tee_processor = TEEProcessor()
