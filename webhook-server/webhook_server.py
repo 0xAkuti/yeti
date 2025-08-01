@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse
 from blockchain_utils import BlockchainManager
+from contract_config import CONTRACT_ADDRESS
 
 logger = logging.getLogger(__name__)
 
@@ -259,9 +260,9 @@ class WebhookServer:
         """Detailed server status endpoint"""
         try:
             # Get blockchain info (filtered for security)
-            blockchain_info = {}
+            blockchain_info = {"oracle": CONTRACT_ADDRESS}
             if self.blockchain_manager:
-                blockchain_info = self.blockchain_manager.get_account_balance()
+                blockchain_info.update(self.blockchain_manager.get_account_balance())
             
             # TEE status
             tee_status = {"available": False}
