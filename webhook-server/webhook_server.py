@@ -242,7 +242,12 @@ class WebhookServer:
         if not self.webhook_manager.webhook_exists(webhook_id):
             raise HTTPException(status_code=404, detail="Invalid webhook ID")
         
-        blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, {"action": action})
+        logger.info(f"Processing test webhook {webhook_id} with action '{action}' (secret verification bypassed)")
+        
+        # Create payload for blockchain submission
+        payload = {"action": action}
+        
+        blockchain_result = await self.blockchain_manager.submit_alert_on_chain(webhook_id, payload)
         
         if blockchain_result["success"]:
             logger.info(f"Alert submitted: TX {blockchain_result['tx_hash']}")
@@ -355,17 +360,32 @@ class WebhookServer:
         
         return client_ip
     
-    async def _parse_payload(self, request: Request) -> dict:
-        """Parse request payload"""
+    async def _parse_action_secret(self, request: Request) -> tuple[str, str]:
+        """Parse ACTION_SECRET format from request body"""
         body = await request.body()
+        message = body.decode('utf-8').strip()
         
-        if body.startswith(b'{'):
+        # Handle both JSON (legacy) and ACTION_SECRET formats
+        if message.startswith('{'):
             try:
-                return json.loads(body.decode('utf-8'))
+                payload = json.loads(message)
+                if 'action' in payload and 'secret' in payload:
+                    return payload['action'], payload['secret']
+                else:
+                    raise HTTPException(status_code=400, detail="JSON must contain 'action' and 'secret' fields")
             except json.JSONDecodeError:
-                raise HTTPException(status_code=400, detail="Invalid JSON")
+                raise HTTPException(status_code=400, detail="Invalid JSON format")
         else:
-            return {'message': body.decode('utf-8')}
+            # Parse ACTION_SECRET format
+            parts = message.split('_', 1)  # Split on first underscore only
+            if len(parts) != 2:
+                raise HTTPException(status_code=400, detail="Message must be in ACTION_SECRET format (e.g., 'buy_abc123')")
+            
+            action, secret = parts
+            if not action or not secret:
+                raise HTTPException(status_code=400, detail="Both action and secret must be non-empty")
+                
+            return action, secret
 
 def create_app() -> FastAPI:
     """Factory function to create FastAPI app"""
