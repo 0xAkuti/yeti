@@ -34,66 +34,9 @@ contract DeployWebhookOracle is Script {
         
         // Example: Test ChainlinkCalculator with real mainnet oracles
         console.log("\n=== ChainlinkCalculator Example ===");
-        demoChainlinkCalculator(chainlinkCalculator);
         testRealOraclePrices();
         
         vm.stopBroadcast();
-    }
-    
-    function demoChainlinkCalculator(ChainlinkCalculator calculator) internal view {
-        console.log("ChainlinkCalculator enables dynamic pricing for 1inch limit orders using real Chainlink oracles");
-        console.log("");
-        
-        // Example 1: ETH/USDC order with stop-loss at current price - 5%
-        console.log("=== Example 1: ETH Stop-Loss Order ===");
-        console.log("Scenario: Sell ETH for USDC when price drops 5% below current market");
-        console.log("Oracle: ETH/USD at", ETH_USD_ORACLE);
-        
-        bytes memory ethStopLossData = abi.encodePacked(
-            bytes1(0x00),  // No inverse (ETH/USD as-is)
-            bytes20(ETH_USD_ORACLE),
-            bytes32(uint256(950 * 1e6))  // 95% of market price (5% below)
-        );
-        console.log("ExtraData for 5% stop-loss:");
-        console.logBytes(ethStopLossData);
-        console.log("");
-        
-        // Example 2: BTC/ETH cross-pair using dual oracles
-        console.log("=== Example 2: BTC/ETH Cross-Pair Order ===");
-        console.log("Scenario: Trade BTC for ETH based on BTC/ETH ratio");
-        console.log("Uses BTC/USD and ETH/USD oracles to calculate BTC/ETH price");
-        
-        bytes memory btcEthCrossData = abi.encodePacked(
-            bytes1(0x40),  // Dual oracle flag
-            bytes20(BTC_USD_ORACLE),
-            bytes20(ETH_USD_ORACLE),
-            bytes32(uint256(0)),  // No decimal scaling needed (both are USD pairs)
-            bytes32(uint256(1000 * 1e6))  // 1:1 spread (no premium)
-        );
-        console.log("ExtraData for BTC/ETH cross-pair:");
-        console.logBytes(btcEthCrossData);
-        console.log("");
-        
-        // Example 3: USDC normalization (accounting for USDC depeg)
-        console.log("=== Example 3: USDC Depeg Protection ===");
-        console.log("Scenario: Only execute when USDC is close to $1.00");
-        console.log("Oracle: USDC/USD at", USDC_USD_ORACLE);
-        
-        bytes memory usdcDepegData = abi.encodePacked(
-            bytes1(0x00),  // No inverse
-            bytes20(USDC_USD_ORACLE),
-            bytes32(uint256(999 * 1e6))  // Only execute if USDC >= $0.999
-        );
-        console.log("ExtraData for USDC depeg protection:");
-        console.logBytes(usdcDepegData);
-        console.log("");
-        
-        console.log("=== Integration with Yeti Webhook System ===");
-        console.log("Combine ChainlinkCalculator with WebhookPredicate for advanced strategies:");
-        console.log("1. TradingView sends alert when technical conditions are met");
-        console.log("2. WebhookPredicate validates the alert");
-        console.log("3. ChainlinkCalculator ensures price conditions are still valid");
-        console.log("4. Order executes only when both conditions are satisfied");
     }
     
     function testRealOraclePrices() internal view {
