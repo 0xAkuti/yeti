@@ -5,7 +5,6 @@ import {Test, console} from "forge-std/Test.sol";
 import {WebhookOracle} from "../src/WebhookOracle.sol";
 
 contract WebhookOracleTest is Test {
-    event StrategyNonceReset(bytes16 indexed alertId, uint32 nonce);
     WebhookOracle public oracle;
     address public owner;
     address public user1;
@@ -163,62 +162,8 @@ contract WebhookOracleTest is Test {
         assertEq(alert2.nonce, 2); // alertId2 submitted twice
     }
 
-    function test_ResetStrategyNonce() public {
-        bytes16 alertId = 0x55555555555555555555555555555555;
-        
-        // Submit several alerts to build up nonce
-        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
-        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
-        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
-        
-        WebhookOracle.AlertData memory alertBefore = oracle.getAlert(alertId);
-        assertEq(alertBefore.nonce, 3);
-        
-        // Reset nonce
-        vm.expectEmit(true, false, false, true);
-        emit StrategyNonceReset(alertId, 0);
-        oracle.resetStrategyNonce(alertId);
-        
-        // Check nonce is reset
-        WebhookOracle.AlertData memory alertAfter = oracle.getAlert(alertId);
-        assertEq(alertAfter.nonce, 0);
-        
-        // Next alert should start from 1 again
-        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
-        WebhookOracle.AlertData memory alertNew = oracle.getAlert(alertId);
-        assertEq(alertNew.nonce, 1);
-    }
 
-    function test_ResetNonceOnlyOwner() public {
-        bytes16 alertId = 0x66666666666666666666666666666666;
-        
-        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
-        
-        // Non-owner should not be able to reset nonce
-        vm.expectRevert();
-        vm.prank(user1);
-        oracle.resetStrategyNonce(alertId);
-        
-        // Owner should be able to reset nonce
-        oracle.resetStrategyNonce(alertId);
-        
-        WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
-        assertEq(alert.nonce, 0);
-    }
 
-    function test_ResetNonceForNonexistentStrategy() public {
-        bytes16 nonExistentId = 0x77777777777777777777777777777777;
-        
-        // Should be able to reset nonce even for non-existent strategy
-        vm.expectEmit(true, false, false, true);
-        emit StrategyNonceReset(nonExistentId, 0);
-        oracle.resetStrategyNonce(nonExistentId);
-        
-        // Alert should still not exist
-        WebhookOracle.AlertData memory alert = oracle.getAlert(nonExistentId);
-        assertEq(alert.alertId, bytes16(0));
-        assertEq(alert.nonce, 0);
-    }
 
     function test_NonceConsistencyAfterActionChange() public {
         bytes16 alertId = 0x99999999999999999999999999999999;

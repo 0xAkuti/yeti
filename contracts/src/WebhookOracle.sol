@@ -29,7 +29,6 @@ contract WebhookOracle is OwnableRoles {
         uint32 nonce
     );
 
-    event StrategyNonceReset(bytes16 indexed alertId, uint32 newNonce);
 
     modifier onlySubmitter() {
         _checkRolesOrOwner(SUBMITTER_ROLE);
@@ -74,8 +73,4 @@ contract WebhookOracle is OwnableRoles {
         return alerts[_alertId].nonce;
     }
 
-    function resetStrategyNonce(bytes16 _alertId) external onlyOwner {
-        alerts[_alertId].nonce = 0;
-        emit StrategyNonceReset(_alertId, 0);
-    }
 }
