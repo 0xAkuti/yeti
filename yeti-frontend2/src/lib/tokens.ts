@@ -30,11 +30,11 @@ export const BASE_TOKENS: Token[] = [
     logoURI: 'https://tokens.1inch.io/0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.png',
   },
   {
-    address: '0x78a087d713Be963Bf307b18F2Ff8122EF9A63ae9',
-    symbol: 'WBTC', 
-    name: 'Wrapped BTC',
+    address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eeD33Bf',
+    symbol: 'cbBTC',
+    name: 'Coinbase Wrapped BTC',
     decimals: 8,
-    logoURI: 'https://tokens.1inch.io/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599.png',
+    logoURI: 'https://tokens-data.1inch.io/images/8453/0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf_0xeb6b840f829734e06319f996d76fcfdbd6b2918887ec434cc1dacdb5cec17143.webp',
   },
 ];
 

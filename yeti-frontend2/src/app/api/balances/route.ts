@@ -123,44 +123,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(balances);
   } catch (error) {
     console.error('Failed to fetch balances:', error);
-    
-    // Return mock data for Base tokens if API fails
-    const mockBalances = [
-      {
-        address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-        symbol: 'USDC',
-        name: 'USD Coin',
-        decimals: 6,
-        balance: '1000000000', // 1000 USDC
-        balanceUSD: '1000.00',
-        logoURI: '',
-        isCustom: false,
-        tags: ['tokens'],
-      },
-      {
-        address: '0x4200000000000000000000000000000000000006',
-        symbol: 'WETH',
-        name: 'Wrapped Ether',
-        decimals: 18,
-        balance: '1000000000000000000', // 1 WETH
-        balanceUSD: '3500.00',
-        logoURI: '',
-        isCustom: false,
-        tags: ['tokens'],
-      },
-      {
-        address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2',
-        symbol: 'USDT',
-        name: 'Tether USD',
-        decimals: 6,
-        balance: '500000000', // 500 USDT
-        balanceUSD: '500.00',
-        logoURI: '',
-        isCustom: false,
-        tags: ['tokens'],
-      },
-    ];
-
-    return NextResponse.json(mockBalances);
+    return NextResponse.json(
+      { error: 'Failed to fetch token balances from 1inch API' },
+      { status: 500 }
+    );
   }
 }
