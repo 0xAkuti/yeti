@@ -185,12 +185,33 @@ export function useYetiSDK() {
     }
   }, [yetiSDK]);
 
+  // Get user orders from orderbook
+  const getUserOrders = useCallback(async (userAddress: string) => {
+    if (!yetiSDK) {
+      throw new Error('SDK not initialized');
+    }
+
+    try {
+      const orders = await yetiSDK.orderbook.getOrders({
+        maker: userAddress,
+        chain_id: base.id
+      });
+
+      console.log('Retrieved user orders:', orders);
+      return orders;
+    } catch (err) {
+      console.error('Failed to get user orders:', err);
+      throw err;
+    }
+  }, [yetiSDK]);
+
   return {
     yetiSDK,
     loading,
     error,
     createLimitOrder,
     submitOrder,
+    getUserOrders,
     isReady: ready && authenticated && !!connectedWallet
   };
 }
