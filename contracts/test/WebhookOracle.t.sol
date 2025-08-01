@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {WebhookOracle} from "../src/WebhookOracle.sol";
 
 contract WebhookOracleTest is Test {
+    event StrategyNonceReset(bytes16 indexed alertId, uint32 nonce);
     WebhookOracle public oracle;
     address public owner;
     address public user1;
@@ -34,6 +35,7 @@ contract WebhookOracleTest is Test {
         assertEq(alert.alertId, alertId);
         assertTrue(alert.action == action);
         assertTrue(alert.timestamp > 0);
+        assertEq(alert.nonce, 1);
     }
 
     function test_AddAuthorizedSubmitter() public {
@@ -49,6 +51,7 @@ contract WebhookOracleTest is Test {
         WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
         assertEq(alert.alertId, alertId);
         assertTrue(alert.action == WebhookOracle.Action.LONG);
+        assertEq(alert.nonce, 1);
     }
 
     function test_RemoveAuthorizedSubmitter() public {
@@ -80,6 +83,7 @@ contract WebhookOracleTest is Test {
         assertEq(alert.alertId, bytes16(0));
         assertTrue(alert.action == WebhookOracle.Action.NONE);
         assertEq(alert.timestamp, 0);
+        assertEq(alert.nonce, 0);
     }
 
     function test_OverwriteAlert() public {
@@ -92,6 +96,7 @@ contract WebhookOracleTest is Test {
         WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
         assertEq(alert.alertId, alertId);
         assertTrue(alert.action == WebhookOracle.Action.LONG);
+        assertEq(alert.nonce, 2); // Should be 2 after overwrite
     }
 
     function test_AlertSubmittedEvent() public {
@@ -100,8 +105,156 @@ contract WebhookOracleTest is Test {
         WebhookOracle.Action action = WebhookOracle.Action.SHORT;
         
         vm.expectEmit(true, false, false, true);
-        emit WebhookOracle.AlertSubmitted(alertId, action, uint32(block.timestamp));
+        emit WebhookOracle.AlertSubmitted(alertId, action, uint32(block.timestamp), 1);
         
         oracle.submitAlert(alertId, action);
+    }
+
+    // === Nonce Feature Tests ===
+
+    function test_NonceIncrementsOnNewAlert() public {
+        bytes16 alertId = 0x11111111111111111111111111111111;
+        
+        // First alert should have nonce 1
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        WebhookOracle.AlertData memory alert1 = oracle.getAlert(alertId);
+        assertEq(alert1.nonce, 1);
+        
+        // Second alert should have nonce 2
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+        WebhookOracle.AlertData memory alert2 = oracle.getAlert(alertId);
+        assertEq(alert2.nonce, 2);
+        
+        // Third alert should have nonce 3
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        WebhookOracle.AlertData memory alert3 = oracle.getAlert(alertId);
+        assertEq(alert3.nonce, 3);
+    }
+
+    function test_NonceEmittedInEvent() public {
+        bytes16 alertId = 0x22222222222222222222222222222222;
+        
+        // First alert - expect nonce 1
+        vm.expectEmit(true, false, false, true);
+        emit WebhookOracle.AlertSubmitted(alertId, WebhookOracle.Action.LONG, uint32(block.timestamp), 1);
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        
+        // Second alert - expect nonce 2
+        vm.expectEmit(true, false, false, true);
+        emit WebhookOracle.AlertSubmitted(alertId, WebhookOracle.Action.SHORT, uint32(block.timestamp), 2);
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+    }
+
+    function test_IndependentNoncesPerAlertId() public {
+        bytes16 alertId1 = 0x33333333333333333333333333333333;
+        bytes16 alertId2 = 0x44444444444444444444444444444444;
+        
+        // Submit alerts for different IDs
+        oracle.submitAlert(alertId1, WebhookOracle.Action.LONG);
+        oracle.submitAlert(alertId2, WebhookOracle.Action.SHORT);
+        oracle.submitAlert(alertId1, WebhookOracle.Action.SHORT);
+        oracle.submitAlert(alertId2, WebhookOracle.Action.LONG);
+        
+        // Check nonces are independent
+        WebhookOracle.AlertData memory alert1 = oracle.getAlert(alertId1);
+        WebhookOracle.AlertData memory alert2 = oracle.getAlert(alertId2);
+        
+        assertEq(alert1.nonce, 2); // alertId1 submitted twice
+        assertEq(alert2.nonce, 2); // alertId2 submitted twice
+    }
+
+    function test_ResetStrategyNonce() public {
+        bytes16 alertId = 0x55555555555555555555555555555555;
+        
+        // Submit several alerts to build up nonce
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        
+        WebhookOracle.AlertData memory alertBefore = oracle.getAlert(alertId);
+        assertEq(alertBefore.nonce, 3);
+        
+        // Reset nonce
+        vm.expectEmit(true, false, false, true);
+        emit StrategyNonceReset(alertId, 0);
+        oracle.resetStrategyNonce(alertId);
+        
+        // Check nonce is reset
+        WebhookOracle.AlertData memory alertAfter = oracle.getAlert(alertId);
+        assertEq(alertAfter.nonce, 0);
+        
+        // Next alert should start from 1 again
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        WebhookOracle.AlertData memory alertNew = oracle.getAlert(alertId);
+        assertEq(alertNew.nonce, 1);
+    }
+
+    function test_ResetNonceOnlyOwner() public {
+        bytes16 alertId = 0x66666666666666666666666666666666;
+        
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        
+        // Non-owner should not be able to reset nonce
+        vm.expectRevert();
+        vm.prank(user1);
+        oracle.resetStrategyNonce(alertId);
+        
+        // Owner should be able to reset nonce
+        oracle.resetStrategyNonce(alertId);
+        
+        WebhookOracle.AlertData memory alert = oracle.getAlert(alertId);
+        assertEq(alert.nonce, 0);
+    }
+
+    function test_ResetNonceForNonexistentStrategy() public {
+        bytes16 nonExistentId = 0x77777777777777777777777777777777;
+        
+        // Should be able to reset nonce even for non-existent strategy
+        vm.expectEmit(true, false, false, true);
+        emit StrategyNonceReset(nonExistentId, 0);
+        oracle.resetStrategyNonce(nonExistentId);
+        
+        // Alert should still not exist
+        WebhookOracle.AlertData memory alert = oracle.getAlert(nonExistentId);
+        assertEq(alert.alertId, bytes16(0));
+        assertEq(alert.nonce, 0);
+    }
+
+    function test_NonceConsistencyAfterActionChange() public {
+        bytes16 alertId = 0x99999999999999999999999999999999;
+        
+        // Submit different actions - nonce should still increment
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        assertEq(oracle.getAlert(alertId).nonce, 1);
+        assertTrue(oracle.getAlert(alertId).action == WebhookOracle.Action.LONG);
+        
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+        assertEq(oracle.getAlert(alertId).nonce, 2);
+        assertTrue(oracle.getAlert(alertId).action == WebhookOracle.Action.SHORT);
+        
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        assertEq(oracle.getAlert(alertId).nonce, 3);
+        assertTrue(oracle.getAlert(alertId).action == WebhookOracle.Action.LONG);
+    }
+
+    function test_NoncePreservesOtherAlertData() public {
+        bytes16 alertId = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+        
+        // Submit first alert
+        oracle.submitAlert(alertId, WebhookOracle.Action.LONG);
+        WebhookOracle.AlertData memory alert1 = oracle.getAlert(alertId);
+        uint32 firstTimestamp = alert1.timestamp;
+        
+        // Wait a bit and submit second alert
+        vm.warp(block.timestamp + 100);
+        oracle.submitAlert(alertId, WebhookOracle.Action.SHORT);
+        WebhookOracle.AlertData memory alert2 = oracle.getAlert(alertId);
+        
+        // Verify nonce incremented but other data updated correctly
+        assertEq(alert2.nonce, 2);
+        assertEq(alert2.alertId, alertId);
+        assertTrue(alert2.action == WebhookOracle.Action.SHORT);
+        assertTrue(alert2.timestamp > firstTimestamp);
+        assertEq(alert2.timestamp, uint32(block.timestamp));
     }
 }
