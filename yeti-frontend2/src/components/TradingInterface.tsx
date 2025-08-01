@@ -10,6 +10,7 @@ import { ConnectButton } from './ConnectButton';
 import { TradingViewSetup } from './TradingViewSetup';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useTokenPrices } from '@/hooks/useTokenPrices';
+import { useYetiSDK } from '@/hooks/useYetiSDK';
 
 export function TradingInterface() {
   const { authenticated, ready } = usePrivy();
@@ -27,10 +28,13 @@ export function TradingInterface() {
   
   // Get prices for both tokens
   const { loading: pricesLoading, getTokenPrice, calculateOutputAmount, refetch: refetchPrices } = useTokenPrices(tokenAddresses);
+  const { createLimitOrder, submitOrder, loading: orderLoading, error: orderError, isReady: yetiReady } = useYetiSDK();
+  
   const [sellAmount, setSellAmount] = useState<string>('');
   const [sellPercentage, setSellPercentage] = useState<number>(0);
   const [isLimitOrder] = useState(true); // Always limit order
   const [showTradingViewSetup, setShowTradingViewSetup] = useState(false);
+  const [orderResult, setOrderResult] = useState<any>(null);
 
   // Get the connected wallet
   const connectedWallet = wallets[0];
@@ -51,9 +55,33 @@ export function TradingInterface() {
       )
     : '0';
 
-  const handleCreateLimitOrder = () => {
-    // TODO: Integrate Yeti SDK to create limit order
-    setShowTradingViewSetup(true);
+  const handleCreateLimitOrder = async () => {
+    if (!sellAmount || parseFloat(sellAmount) <= 0) {
+      return;
+    }
+
+    try {
+      // Determine action based on tokens (simplified logic)
+      // In a real app, this would be determined by user selection or market analysis
+      const action: 'LONG' | 'SHORT' = 'LONG'; // Default to LONG for now
+      
+      const result = await createLimitOrder({
+        sellToken: sellToken.address,
+        sellAmount,
+        buyToken: buyToken.address,
+        action
+      });
+
+      setOrderResult(result);
+      setShowTradingViewSetup(true);
+
+      // Submit to orderbook
+      await submitOrder(result.orderData, result.signature, result.webhook.webhookId);
+      
+      console.log('Limit order created and submitted:', result);
+    } catch (error) {
+      console.error('Failed to create limit order:', error);
+    }
   };
 
   const handleSwapTokens = () => {
@@ -262,10 +290,19 @@ export function TradingInterface() {
           <button
             onClick={handleCreateLimitOrder}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-            disabled={!sellAmount || parseFloat(sellAmount) <= 0}
+            disabled={!sellAmount || parseFloat(sellAmount) <= 0 || orderLoading || !yetiReady}
           >
-            Create Limit Order
+            {orderLoading ? 'Creating Order...' : 'Create Limit Order & Sign'}
           </button>
+        )}
+
+        {/* Error Display */}
+        {orderError && (
+          <div className="mt-4 p-3 bg-red-900/20 border border-red-600 rounded-xl">
+            <p className="text-sm text-red-200">
+              Error: {orderError}
+            </p>
+          </div>
         )}
 
         {/* Limit Order Info */}
@@ -283,6 +320,7 @@ export function TradingInterface() {
       <TradingViewSetup
         isOpen={showTradingViewSetup}
         onClose={() => setShowTradingViewSetup(false)}
+        orderResult={orderResult}
       />
     </div>
   );

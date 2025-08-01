@@ -6,21 +6,33 @@ import { Copy, X, Check, ExternalLink } from 'lucide-react';
 interface TradingViewSetupProps {
   isOpen: boolean;
   onClose: () => void;
-  webhookUrl?: string;
-  webhookSecret?: string;
-  alertMessage?: string;
+  orderResult?: {
+    webhook: {
+      webhookUrl: string;
+      webhookId: string;
+      alertId: string;
+      secret: string;
+      buyMessage: string;
+      sellMessage: string;
+    };
+    tradingViewSetup: string;
+    orderHash: string;
+  };
 }
 
 export function TradingViewSetup({ 
   isOpen, 
-  onClose, 
-  webhookUrl = 'https://your-webhook-url.com/webhook/abc123',
-  webhookSecret = 'your-webhook-secret-key',
-  alertMessage = '{"action": "LONG", "symbol": "{{ticker}}", "price": "{{close}}"}'
+  onClose,
+  orderResult
 }: TradingViewSetupProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  // Use real webhook data if available, otherwise show defaults
+  const webhookUrl = orderResult?.webhook?.webhookUrl || 'https://your-webhook-url.com/webhook/abc123';
+  const alertMessage = orderResult?.webhook?.buyMessage || '{"action": "LONG", "symbol": "{{ticker}}", "price": "{{close}}"}';
+  const orderHash = orderResult?.orderHash || 'Order not created yet';
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -52,11 +64,21 @@ export function TradingViewSetup({
           <div className="bg-green-900/20 border border-green-800 rounded-xl p-4">
             <div className="flex items-center space-x-2">
               <Check className="text-green-400" size={20} />
-              <span className="text-green-200 font-semibold">Limit Order Created!</span>
+              <span className="text-green-200 font-semibold">
+                {orderResult ? 'Limit Order Created & Signed!' : 'Setup TradingView Alert'}
+              </span>
             </div>
             <p className="text-green-300 text-sm mt-1">
-              Your limit order is ready. Follow the steps below to connect it to TradingView.
+              {orderResult 
+                ? 'Your limit order has been signed and stored. Follow the steps below to connect it to TradingView.'
+                : 'Follow the steps below to set up your TradingView alert.'
+              }
             </p>
+            {orderResult && (
+              <div className="mt-2 text-xs text-green-400 font-mono break-all">
+                Order Hash: {orderHash}
+              </div>
+            )}
           </div>
 
           {/* Step 1: Webhook URL */}
