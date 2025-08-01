@@ -4,6 +4,12 @@
   "description": "Yeti Order Manager - TradingView alerts to 1inch limit orders",
   "main": "dist/index.js",
   "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "jest",

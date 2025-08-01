@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: ['yeti-order-manager'],
+  experimental: {
+    optimizePackageImports: ['@1inch/limit-order-sdk'],
+  },
 };
 
 export default nextConfig;
