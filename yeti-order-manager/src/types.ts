@@ -17,7 +17,9 @@ export interface WebhookInfo {
     webhookId: string;
     alertId: string;
     webhookUrl: string;
-    alertMessage: string;
+    secret: string;
+    buyMessage: string;
+    sellMessage: string;
 }
 
 export interface ConditionalOrderParams {

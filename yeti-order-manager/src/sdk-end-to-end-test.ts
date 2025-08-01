@@ -185,7 +185,7 @@ class YetiSDKEndToEndTest {
         console.log(`   Signature: ${signature.slice(0, 20)}...`);
         console.log(`   Order hash: ${signingData.orderHash}`);
         
-        return { orderData, webhook, signature, tradingViewSetup };
+        return { orderData, webhook, signature };
     }
 
     private displayTradingViewInstructions(webhook: any) {
@@ -194,15 +194,15 @@ class YetiSDKEndToEndTest {
         console.log('\n🔸 PLEASE FOLLOW THESE STEPS:');
         console.log('\n1. Go to TradingView and create a new alert');
         console.log('2. Set the webhook URL to:');
-        console.log(`   ${webhook.webhookUrl}/testing/LONG`);
+        console.log(`   ${webhook.webhookUrl}`);
         console.log('\n3. Set the alert message to:');
-        console.log('   {');
-        console.log('     "action": "LONG"');
-        console.log('   }');
+        console.log(`   ${webhook.buyMessage}`);
         console.log('\n4. Set the alert condition to trigger when you want the order to execute');
         console.log('5. Save the alert');
         console.log('\n✅ Once you have set up the alert, trigger it to test the system');
         console.log('✅ This script will wait for the alert and automatically fulfill the order');
+        console.log('\n📋 For manual testing, you can also use:');
+        console.log(`   GET ${webhook.webhookUrl}/testing/buy`);
         console.log('\nWaiting for alert...');
     }
 

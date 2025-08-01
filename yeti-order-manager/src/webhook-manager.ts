@@ -39,7 +39,9 @@ export class WebhookManager {
                 webhookId,
                 alertId,
                 webhookUrl: `${this.webhookServerUrl}${webhookData.webhook_url}`,
-                alertMessage: JSON.stringify({ action: "{{strategy.order.action}}" }, null, 2)
+                secret: webhookData.secret,
+                buyMessage: webhookData.buy_message,
+                sellMessage: webhookData.sell_message
             };
         } catch (error) {
             throw new Error(`Failed to create webhook: ${error}`);
@@ -47,24 +49,32 @@ export class WebhookManager {
     }
 
     generateTradingViewSetup(webhookInfo: WebhookInfo, action: 'LONG' | 'SHORT' = 'LONG'): string {
+        const message = action === 'LONG' ? webhookInfo.buyMessage : webhookInfo.sellMessage;
+        
         return `
 TradingView Alert Setup:
 ========================
 
 1. Create a new alert in TradingView
 2. Set the webhook URL to:
-   ${webhookInfo.webhookUrl}/testing/${action}
+   ${webhookInfo.webhookUrl}
 
 3. Set the alert message to:
-   {
-     "action": "${action}"
-   }
+   ${message}
+
+   💡 This simple format replaces the old JSON:
+   ✅ New: ${action.toLowerCase()}_secrethere (simple string)
+   ❌ Old: {"action": "${action}", "secret": "secrethere"} (JSON)
 
 4. Configure your alert condition and save
 5. The order will execute automatically when the alert fires
 
+📋 For manual testing, you can also use:
+   GET ${webhookInfo.webhookUrl}/testing/${action.toLowerCase()}
+
 Alert ID: ${webhookInfo.alertId}
 Webhook ID: ${webhookInfo.webhookId}
+Secret: ${webhookInfo.secret}
         `.trim();
     }
 }

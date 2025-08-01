@@ -179,7 +179,7 @@ class YetiEndToEndTest {
     }
 
     private async registerWebhook() {
-        console.log('\n2️⃣ Registering webhook...');
+        console.log('\n2️⃣ Creating stateless webhook...');
         
         // Check webhook server is running
         try {
@@ -209,15 +209,17 @@ class YetiEndToEndTest {
                 throw new Error(`Failed to create webhook: ${response.statusText}`);
             }
             
-            const webhookData = await response.json();
-            this.webhookId = webhookData.webhook_id;
+            this.webhookData = await response.json();
+            this.webhookId = this.webhookData.webhook_id;
             this.alertId = '0x' + this.webhookId.replace(/-/g, '');
             
             console.log(`✅ Webhook created:`);
             console.log(`   Webhook ID: ${this.webhookId}`);
             console.log(`   Alert ID: ${this.alertId}`);
-            console.log(`   Webhook URL: ${this.webhookServerUrl}${webhookData.webhook_url}`);
-            console.log(`   User: ${webhookData.user}`);
+            console.log(`   Webhook URL: ${this.webhookServerUrl}${this.webhookData.webhook_url}`);
+            console.log(`   Secret: ${this.webhookData.secret}`);
+            console.log(`   Buy Message: ${this.webhookData.buy_message}`);
+            console.log(`   Sell Message: ${this.webhookData.sell_message}`);
         } catch (error) {
             console.log(`❌ Failed to create webhook: ${error}`);
             process.exit(1);
@@ -390,15 +392,15 @@ class YetiEndToEndTest {
         console.log('\n🔸 PLEASE FOLLOW THESE STEPS:');
         console.log('\n1. Go to TradingView and create a new alert');
         console.log('2. Set the webhook URL to:');
-        console.log(`   ${this.webhookServerUrl}/webhook/${this.webhookId}/testing/LONG`);
+        console.log(`   ${this.webhookServerUrl}${this.webhookData.webhook_url}`);
         console.log('\n3. Set the alert message to:');
-        console.log('   {');
-        console.log('     "action": "LONG"');
-        console.log('   }');
+        console.log(`   ${this.webhookData.buy_message}`);
         console.log('\n4. Set the alert condition to trigger when you want the order to execute');
         console.log('5. Save the alert');
         console.log('\n✅ Once you have set up the alert, trigger it to test the system');
         console.log('✅ This script will wait for the alert and automatically fulfill the order');
+        console.log('\n📋 For manual testing, you can also use:');
+        console.log(`   GET ${this.webhookServerUrl}/webhook/${this.webhookId}/testing/buy`);
         console.log('\nWaiting for alert...');
     }
 
