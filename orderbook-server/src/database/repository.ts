@@ -85,17 +85,17 @@ export class OrderRepository {
         }
 
         if (filters.maker) {
-            whereClause += ' AND maker = ?';
+            whereClause += ' AND LOWER(maker) = LOWER(?)';
             params.push(filters.maker);
         }
 
         if (filters.maker_asset) {
-            whereClause += ' AND maker_asset = ?';
+            whereClause += ' AND LOWER(maker_asset) = LOWER(?)';
             params.push(filters.maker_asset);
         }
 
         if (filters.taker_asset) {
-            whereClause += ' AND taker_asset = ?';
+            whereClause += ' AND LOWER(taker_asset) = LOWER(?)';
             params.push(filters.taker_asset);
         }
 
