@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useYetiSDK } from '@/hooks/useYetiSDK';
-import { getTokenByAddress, Token } from '@/lib/tokens';
+import { getTokenByAddress } from '@/lib/tokens';
 
 interface Order {
   id: string;
@@ -14,13 +14,18 @@ interface Order {
   taker_asset: string;
   making_amount: string;
   taking_amount: string;
+  salt: string;
+  maker_traits: string;
+  extension?: string;
+  receiver?: string;
+  signature: string;
   status: 'pending' | 'triggered' | 'partially_filled' | 'filled' | 'cancelled' | 'expired';
   filled_amount: string;
   remaining_amount: string;
   created_at: string;
   updated_at: string;
-  expires_at: string;
-  token_pair: string;
+  expires_at?: string;
+  token_pair?: string;
   alert_id: string;
   webhook_id: string;
 }
@@ -89,6 +94,12 @@ interface CopyButtonProps {
   label: string;
 }
 
+interface OrderDetailsModalProps {
+  order: Order | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 function CopyButton({ text, displayText, label }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
@@ -120,6 +131,307 @@ function CopyButton({ text, displayText, label }: CopyButtonProps) {
   );
 }
 
+function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalProps) {
+  const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
+  
+  // Fetch token prices from 1inch API
+  useEffect(() => {
+    if (!isOpen || !order) return;
+
+    const fetchPrices = async () => {
+      try {
+        const addresses = [order.maker_asset, order.taker_asset].join(',');
+        const response = await fetch(`/api/price?addresses=${addresses}&currency=USD`);
+        
+        if (!response.ok) {
+          console.error('Price API error:', response.status);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('Price data:', data);
+        setTokenPrices(data);
+      } catch (error) {
+        console.error('Failed to fetch prices:', error);
+      }
+    };
+
+    fetchPrices();
+  }, [isOpen, order?.maker_asset, order?.taker_asset]);
+
+  if (!isOpen || !order) return null;
+
+  const makerToken = getTokenInfo(order.maker_asset);
+  const takerToken = getTokenInfo(order.taker_asset);
+  const fillPercentage = calculateFillPercentage(order.filled_amount, order.making_amount);
+
+  // Calculate estimated USD value using real prices
+  const estimateUSDValue = (amount: string, decimals: number, tokenAddress: string): string => {
+    const tokenAmount = parseFloat(amount) / Math.pow(10, decimals);
+    const price = tokenPrices[tokenAddress] || tokenPrices[tokenAddress.toLowerCase()] || 0;
+    
+    if (price === 0) {
+      return 'Loading...';
+    }
+    
+    const priceValue = typeof price === 'string' ? parseFloat(price) : price;
+    return (tokenAmount * priceValue).toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  // Calculate estimated taker amount based on current prices
+  const calculateEstimatedTakerAmount = (): string => {
+    const makerPrice = tokenPrices[order.maker_asset] || tokenPrices[order.maker_asset.toLowerCase()] || 0;
+    const takerPrice = tokenPrices[order.taker_asset] || tokenPrices[order.taker_asset.toLowerCase()] || 0;
+    
+    if (makerPrice === 0 || takerPrice === 0) {
+      return formatAmount(order.taking_amount, takerToken.decimals);
+    }
+    
+    const makerPriceValue = typeof makerPrice === 'string' ? parseFloat(makerPrice) : makerPrice;
+    const takerPriceValue = typeof takerPrice === 'string' ? parseFloat(takerPrice) : takerPrice;
+    
+    const makerAmountNum = parseFloat(order.making_amount) / Math.pow(10, makerToken.decimals);
+    const makerValueUSD = makerAmountNum * makerPriceValue;
+    const estimatedTakerAmount = makerValueUSD / takerPriceValue;
+    
+    return estimatedTakerAmount.toLocaleString(undefined, { 
+      minimumFractionDigits: 0, 
+      maximumFractionDigits: 6 
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 transition-opacity"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-gray-800 rounded-xl shadow-2xl border border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center -space-x-1">
+              <img src={makerToken.logo} alt={makerToken.symbol} className="w-8 h-8 rounded-full border border-gray-600" />
+              <img src={takerToken.logo} alt={takerToken.symbol} className="w-8 h-8 rounded-full border border-gray-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">{makerToken.symbol} → {takerToken.symbol}</h2>
+              <div className={`px-2 py-1 rounded text-xs font-medium ${ORDER_STATUS_COLORS[order.status]} inline-block`}>
+                {order.status.replace('_', ' ')}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Order Details */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Amounts */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-700/20 p-3 rounded-lg">
+                <label className="text-xs text-gray-400 block mb-1">Selling</label>
+                <div className="text-white font-medium">{formatAmount(order.making_amount, makerToken.decimals)} {makerToken.symbol}</div>
+                <div className="text-xs text-gray-400">{estimateUSDValue(order.making_amount, makerToken.decimals, order.maker_asset)}</div>
+              </div>
+              
+              <div className="bg-gray-700/20 p-3 rounded-lg">
+                <label className="text-xs text-gray-400 block mb-1">For (estimated at current prices)</label>
+                <div className="text-white font-medium">~{calculateEstimatedTakerAmount()} {takerToken.symbol}</div>
+                <div className="text-xs text-gray-400">{estimateUSDValue(order.making_amount, makerToken.decimals, order.maker_asset)}</div>
+              </div>
+            </div>
+
+            {/* Fill Progress */}
+            <div className="bg-gray-700/20 p-3 rounded-lg">
+              <label className="text-xs text-gray-400 block mb-1">Fill Progress</label>
+              <div className="flex items-center justify-between text-sm text-white mb-1">
+                <span>{fillPercentage.toFixed(1)}%</span>
+                <span>{formatAmount(order.filled_amount, makerToken.decimals)} / {formatAmount(order.making_amount, makerToken.decimals)}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${fillPercentage}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Identifiers */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-700/20 p-2 rounded">
+                <label className="text-xs text-gray-400 block mb-1">Order Hash</label>
+                <CopyButton 
+                  text={order.order_hash}
+                  displayText={`${order.order_hash.slice(0, 8)}...${order.order_hash.slice(-6)}`}
+                  label="Order Hash"
+                />
+              </div>
+              <div className="bg-gray-700/20 p-2 rounded">
+                <label className="text-xs text-gray-400 block mb-1">Alert ID</label>
+                <CopyButton 
+                  text={order.alert_id}
+                  displayText={`${order.alert_id.slice(0, 8)}...${order.alert_id.slice(-6)}`}
+                  label="Alert ID"
+                />
+              </div>
+              <div className="bg-gray-700/20 p-2 rounded">
+                <label className="text-xs text-gray-400 block mb-1">Webhook ID</label>
+                <CopyButton 
+                  text={order.webhook_id}
+                  displayText={`${order.webhook_id.slice(0, 8)}...${order.webhook_id.slice(-6)}`}
+                  label="Webhook ID"
+                />
+              </div>
+              <div className="bg-gray-700/20 p-2 rounded">
+                <label className="text-xs text-gray-400 block mb-1">Maker</label>
+                <div className="flex items-center space-x-1">
+                  <CopyButton 
+                    text={order.maker}
+                    displayText={`${order.maker.slice(0, 6)}...${order.maker.slice(-4)}`}
+                    label="Maker Address"
+                  />
+                  <a 
+                    href={`https://basescan.org/address/${order.maker}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Assets & Dates */}
+          <div className="space-y-4">
+            {/* Assets */}
+            <div className="bg-gray-700/20 p-3 rounded-lg">
+              <label className="text-xs text-gray-400 block mb-2">Assets</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-300">Maker Asset</span>
+                  <div className="flex items-center space-x-1">
+                    <CopyButton 
+                      text={order.maker_asset}
+                      displayText={`${order.maker_asset.slice(0, 6)}...${order.maker_asset.slice(-4)}`}
+                      label="Maker Asset"
+                    />
+                    <a 
+                      href={`https://basescan.org/token/${order.maker_asset}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-300">Taker Asset</span>
+                  <div className="flex items-center space-x-1">
+                    <CopyButton 
+                      text={order.taker_asset}
+                      displayText={`${order.taker_asset.slice(0, 6)}...${order.taker_asset.slice(-4)}`}
+                      label="Taker Asset"
+                    />
+                    <a 
+                      href={`https://basescan.org/token/${order.taker_asset}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dates */}
+            <div className="bg-gray-700/20 p-3 rounded-lg">
+              <label className="text-xs text-gray-400 block mb-2">Timeline</label>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Created</span>
+                  <span className="text-white">{formatDate(order.created_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Updated</span>
+                  <span className="text-white">{formatDate(order.updated_at)}</span>
+                </div>
+                {order.expires_at && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Expires</span>
+                    <span className="text-white">{formatDate(order.expires_at)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Technical */}
+            <div className="bg-gray-700/20 p-3 rounded-lg">
+              <label className="text-xs text-gray-400 block mb-2">Technical</label>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Chain</span>
+                  <span className="text-white">Base ({order.chain_id})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Salt</span>
+                  <CopyButton 
+                    text={order.salt}
+                    displayText={`${order.salt.slice(0, 6)}...${order.salt.slice(-4)}`}
+                    label="Salt"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-700">
+          {order.status === 'pending' && (
+            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm">
+              Cancel Order
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Dashboard() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
@@ -134,8 +446,22 @@ export function Dashboard() {
   const [assetFilter, setAssetFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  
+  // Modal state
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const connectedWallet = wallets[0];
+
+  const openOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const closeOrderDetails = () => {
+    setSelectedOrder(null);
+    setIsModalOpen(false);
+  };
 
   useEffect(() => {
     if (!authenticated || !connectedWallet || !isReady) {
@@ -230,7 +556,7 @@ export function Dashboard() {
 
       const ordersResponse = await getUserOrders(connectedWallet.address);
       console.log('Orders response structure:', ordersResponse);
-      setOrders(ordersResponse.data || ordersResponse.orders || []);
+      setOrders(ordersResponse.data || []);
     } catch (err) {
       console.error('Failed to fetch user orders:', err);
       setError(err instanceof Error ? err.message : 'Failed to load orders');
@@ -295,7 +621,14 @@ export function Dashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <>
+      <OrderDetailsModal 
+        order={selectedOrder}
+        isOpen={isModalOpen}
+        onClose={closeOrderDetails}
+      />
+      
+      <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">My Orders</h1>
@@ -431,9 +764,6 @@ export function Dashboard() {
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    IDs
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -499,25 +829,6 @@ export function Dashboard() {
                         {formatDate(order.created_at)}
                       </td>
 
-                      {/* IDs */}
-                      <td className="px-4 py-4 space-y-1">
-                        <CopyButton 
-                          text={order.order_hash}
-                          displayText={`${order.order_hash.slice(0, 6)}...${order.order_hash.slice(-4)}`}
-                          label="Order Hash"
-                        />
-                        <CopyButton 
-                          text={order.alert_id}
-                          displayText={`${order.alert_id.slice(0, 6)}...${order.alert_id.slice(-4)}`}
-                          label="Alert ID"
-                        />
-                        <CopyButton 
-                          text={order.webhook_id}
-                          displayText={`${order.webhook_id.slice(0, 6)}...${order.webhook_id.slice(-4)}`}
-                          label="Webhook ID"
-                        />
-                      </td>
-
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <div className="flex items-center space-x-2">
@@ -526,7 +837,10 @@ export function Dashboard() {
                               Cancel
                             </button>
                           )}
-                          <button className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                          <button 
+                            onClick={() => openOrderDetails(order)}
+                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors"
+                          >
                             Details
                           </button>
                         </div>
@@ -539,6 +853,7 @@ export function Dashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
