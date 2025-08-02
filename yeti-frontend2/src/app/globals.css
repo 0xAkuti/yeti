@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --accent-primary: #006e4e;
+  --accent-primary-hover: #005a42;
 }
 
 @theme inline {
@@ -22,7 +24,38 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom background with image */
+.custom-bg {
+  background-image: url('/background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: relative;
+}
+
+.custom-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(26, 32, 54, 0.8) 0%, 
+    rgba(15, 20, 25, 0.6) 50%, 
+    rgba(26, 32, 54, 0.9) 100%);
+  z-index: -1;
+}
+
+/* Enhanced text shadows for better readability */
+.custom-bg h1,
+.custom-bg h2,
+.custom-bg h3 {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* Custom slider styles */
@@ -31,7 +64,7 @@ body {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--accent-primary);
   cursor: pointer;
   border: 2px solid #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -41,8 +74,101 @@ body {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--accent-primary);
   cursor: pointer;
   border: 2px solid #ffffff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Enhanced silky shine animations for YETI text */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes shine-delayed {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+}
+
+@keyframes twinkle-delayed {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.2) rotate(90deg);
+  }
+  75% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(270deg);
+  }
+}
+
+@keyframes twinkle-slow {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.7) rotate(0deg);
+  }
+  33% {
+    opacity: 0.8;
+    transform: scale(1.1) rotate(120deg);
+  }
+  66% {
+    opacity: 0.4;
+    transform: scale(0.9) rotate(240deg);
+  }
+}
+
+.animate-shine {
+  animation: shine 3s ease-in-out infinite;
+}
+
+.animate-shine-delayed {
+  animation: shine-delayed 3s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.animate-twinkle-delayed {
+  animation: twinkle-delayed 2.5s ease-in-out infinite;
+}
+
+.animate-twinkle-slow {
+  animation: twinkle-slow 3s ease-in-out infinite;
 }
