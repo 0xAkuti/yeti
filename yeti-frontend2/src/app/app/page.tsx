@@ -11,6 +11,11 @@ type AppTab = 'order' | 'dashboard';
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>('order');
 
+  // Handle navigation from TradingInterface
+  const handleNavigateToDashboard = () => {
+    setActiveTab('dashboard');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
@@ -59,32 +64,7 @@ export default function App() {
           {activeTab === 'order' && (
             <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
               <div className="w-full max-w-md">
-                <TradingInterface />
-              </div>
-              
-              {/* Info Section */}
-              <div className="mt-8 text-center max-w-2xl">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  Connect TradingView to DeFi
-                </h2>
-                <p className="text-gray-400 mb-6">
-                  Create limit orders that execute automatically when your TradingView alerts trigger. 
-                  Perfect for automated trading strategies on Base network.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <div className="text-blue-400 font-semibold mb-2">1. Set Limit Order</div>
-                    <div className="text-gray-300">Choose your assets and amount</div>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <div className="text-blue-400 font-semibold mb-2">2. Connect TradingView</div>
-                    <div className="text-gray-300">Copy webhook URL to your alerts</div>
-                  </div>
-                  <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
-                    <div className="text-blue-400 font-semibold mb-2">3. Auto Execute</div>
-                    <div className="text-gray-300">Orders fill when alerts trigger</div>
-                  </div>
-                </div>
+                <TradingInterface onNavigateToDashboard={handleNavigateToDashboard} />
               </div>
             </div>
           )}

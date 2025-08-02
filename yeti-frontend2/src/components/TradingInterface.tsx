@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
 import { ArrowUpDown, Settings, RefreshCw } from 'lucide-react';
 import { BASE_TOKENS, Token } from '@/lib/tokens';
 import { AssetSelector } from './AssetSelector';
 import { ConnectButton } from './ConnectButton';
-import { TradingViewSetup } from './TradingViewSetup';
 import { useTokenBalances } from '@/hooks/useTokenBalances';
 import { useTokenPrices } from '@/hooks/useTokenPrices';
 import { useYetiSDK } from '@/hooks/useYetiSDK';
 
-export function TradingInterface() {
+interface TradingInterfaceProps {
+  onNavigateToDashboard?: () => void;
+}
+
+export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProps) {
   const { authenticated, ready } = usePrivy();
   const { wallets } = useWallets();
-  const { balances, loading: balancesLoading, getTokenBalance, formatBalance, formatUSD, refetch } = useTokenBalances();
+  const { loading: balancesLoading, getTokenBalance, formatBalance, formatUSD, refetch } = useTokenBalances();
   
   const [sellToken, setSellToken] = useState<Token>(BASE_TOKENS[0]); // USDC
   const [buyToken, setBuyToken] = useState<Token>(BASE_TOKENS[2]); // WETH
@@ -32,9 +35,9 @@ export function TradingInterface() {
   
   const [sellAmount, setSellAmount] = useState<string>('');
   const [sellPercentage, setSellPercentage] = useState<number>(0);
-  const [isLimitOrder] = useState(true); // Always limit order
-  const [showTradingViewSetup, setShowTradingViewSetup] = useState(false);
+  const [currentPage, setCurrentPage] = useState<'order' | 'setup' | 'success'>('order');
   const [orderResult, setOrderResult] = useState<any>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Get the connected wallet
   const connectedWallet = wallets[0];
@@ -73,7 +76,7 @@ export function TradingInterface() {
       });
 
       setOrderResult(result);
-      setShowTradingViewSetup(true);
+      setCurrentPage('setup');
 
       // Submit to orderbook
       await submitOrder(result.orderData, result.signature, result.webhook.webhookId);
@@ -120,9 +123,10 @@ export function TradingInterface() {
     }
   };
 
-  return (
+  // Page 1: Order Creation
+  const renderOrderPage = () => (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
@@ -279,49 +283,223 @@ export function TradingInterface() {
           </div>
         </div>
 
-        {/* Connect/Trade Button */}
-        {!ready ? (
-          <button className="w-full bg-gray-600 text-white font-semibold py-4 rounded-xl">
-            Loading...
-          </button>
-        ) : !authenticated ? (
-          <ConnectButton />
-        ) : (
-          <button
-            onClick={handleCreateLimitOrder}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-            disabled={!sellAmount || parseFloat(sellAmount) <= 0 || orderLoading || !yetiReady}
-          >
-            {orderLoading ? 'Creating Order...' : 'Create Limit Order & Sign'}
-          </button>
-        )}
-
         {/* Error Display */}
         {orderError && (
-          <div className="mt-4 p-3 bg-red-900/20 border border-red-600 rounded-xl">
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-600 rounded-xl">
             <p className="text-sm text-red-200">
               Error: {orderError}
             </p>
           </div>
         )}
 
-        {/* Limit Order Info */}
-        <div className="mt-4 p-4 bg-blue-900/20 border border-blue-800 rounded-xl">
-          <p className="text-sm text-blue-200 mb-2">
-            🔗 This will create a TradingView-triggered limit order using Yeti
-          </p>
-          <p className="text-xs text-blue-300/70">
-            Note: Estimated output is based on current market prices. Actual execution depends on price when TradingView alert triggers.
-          </p>
+        {/* Spacer to push button to bottom */}
+        <div className="flex-1"></div>
+
+        {/* Connect/Trade Button */}
+        <div className="mt-auto">
+          {!ready ? (
+            <button className="w-full bg-gray-600 text-white font-semibold py-4 rounded-xl">
+              Loading...
+            </button>
+          ) : !authenticated ? (
+            <ConnectButton />
+          ) : (
+            <button
+              onClick={handleCreateLimitOrder}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+              disabled={!sellAmount || parseFloat(sellAmount) <= 0 || orderLoading || !yetiReady}
+              title="🔗 This will create a TradingView-triggered limit order using Yeti&#10;&#10;Note: Estimated output is based on current market prices. Actual execution depends on price when TradingView alert triggers."
+            >
+              {orderLoading ? 'Creating Order...' : 'Create Limit Order & Sign'}
+            </button>
+          )}
         </div>
       </div>
-
-      {/* TradingView Setup Modal */}
-      <TradingViewSetup
-        isOpen={showTradingViewSetup}
-        onClose={() => setShowTradingViewSetup(false)}
-        orderResult={orderResult}
-      />
     </div>
+  );
+
+  // Page 2: TradingView Setup Instructions
+  const renderSetupPage = () => {
+    if (!orderResult) return null;
+
+    const webhookUrl = orderResult.webhook?.webhookUrl || '';
+    const alertMessage = orderResult.webhook?.buyMessage || '';
+
+    return (
+      <div className="w-full max-w-md mx-auto">
+        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-white">Setup TradingView</h2>
+            <button
+              onClick={() => setCurrentPage('order')}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Copy Section */}
+          <div className="space-y-4 mb-6">
+            {/* Webhook URL Copy */}
+            <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+              <div>
+                <div className="text-sm font-medium text-white">Webhook URL</div>
+                <div className="text-xs text-gray-400">Step 1: Copy this URL</div>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(webhookUrl)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Copy</span>
+              </button>
+            </div>
+
+            {/* Alert Message Copy */}
+            <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+              <div>
+                <div className="text-sm font-medium text-white">Alert Message</div>
+                <div className="text-xs text-gray-400">Step 2: Copy this message</div>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(alertMessage)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Help Button */}
+          <div className="mb-6 text-center">
+            <button
+              onClick={() => setShowHelp(!showHelp)}
+              className="inline-flex items-center space-x-2 text-gray-400 hover:text-white text-sm transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>How to setup TradingView alert?</span>
+              <svg className={`w-4 h-4 transition-transform ${showHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Collapsible Help Section */}
+          {showHelp && (
+            <div className="mb-6 bg-gray-700 rounded-lg p-4">
+              <div className="text-sm text-gray-300 space-y-2">
+                <p><strong>1.</strong> Open TradingView and navigate to your chart</p>
+                <p><strong>2.</strong> Click the "Alert" button (bell icon) or press Alt + A</p>
+                <p><strong>3.</strong> Set your alert condition (price level, indicator, etc.)</p>
+                <p><strong>4.</strong> In the "Notifications" tab, enable "Webhook URL"</p>
+                <p><strong>5.</strong> Paste the webhook URL from step 1</p>
+                <p><strong>6.</strong> Paste the alert message from step 2</p>
+                <p><strong>7.</strong> Click "Create" to activate your alert</p>
+              </div>
+              <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-600">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                <a 
+                  href="https://www.tradingview.com/chart/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 text-sm"
+                >
+                  Open TradingView
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Spacer to push button to bottom */}
+          <div className="flex-1"></div>
+
+          {/* Confirm Button */}
+          <div className="mt-auto">
+            <button
+              onClick={() => setCurrentPage('success')}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors"
+            >
+              I've Set Up My TradingView Alert
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Page 3: Success Message
+  const renderSuccessPage = () => (
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
+        {/* Success Icon */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Setup Complete!</h2>
+          <p className="text-gray-300">
+            Your TradingView alert is now connected to your limit order.
+          </p>
+        </div>
+
+        {/* Next Steps */}
+        <div className="bg-blue-900/20 border border-blue-800 rounded-xl p-4 mb-6">
+          <h3 className="text-blue-200 font-semibold mb-2">What happens next?</h3>
+          <ul className="text-blue-300 text-sm space-y-1">
+            <li>• Your limit order will execute automatically when the alert triggers</li>
+            <li>• You can monitor your orders in the Dashboard tab</li>
+            <li>• Make sure you have sufficient balance in your connected wallet</li>
+          </ul>
+        </div>
+
+        {/* Spacer to push buttons to bottom */}
+        <div className="flex-1"></div>
+
+        {/* Actions */}
+        <div className="space-y-3 mt-auto">
+          <button
+            onClick={() => {
+              setCurrentPage('order');
+              setOrderResult(null);
+              setSellAmount('');
+              setSellPercentage(0);
+              setShowHelp(false);
+            }}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            Create Another Order
+          </button>
+          <button
+            onClick={onNavigateToDashboard}
+            className="w-full border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            View My Orders
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Main render function
+  return (
+    <>
+      {currentPage === 'order' && renderOrderPage()}
+      {currentPage === 'setup' && renderSetupPage()}
+      {currentPage === 'success' && renderSuccessPage()}
+    </>
   );
 }
