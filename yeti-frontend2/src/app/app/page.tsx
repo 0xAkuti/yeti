@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TradingInterface } from '@/components/TradingInterface';
 import { Dashboard } from '@/components/Dashboard';
 import { PrivyGuard } from '@/components/PrivyGuard';
+import { BackgroundWrapper } from '@/components/BackgroundWrapper';
 import Link from 'next/link';
 
 type AppTab = 'order' | 'dashboard';
@@ -17,17 +18,22 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <BackgroundWrapper>
       {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm">
+      <header className="border-b border-[#006e4e]/30 bg-black/30 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">Y</span>
-              </div>
-              <h1 className="text-xl font-bold text-white">Yeti DEX</h1>
-            </Link>
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/logo.png" 
+                alt="YETI Logo" 
+                className="w-12 h-12 rounded-lg object-cover"
+                style={{ width: '48px', height: '48px' }}
+              />
+              <Link href="/" className="text-xl font-black tracking-wider text-white uppercase" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                YETI
+              </Link>
+            </div>
             
             {/* Navigation */}
             <div className="flex items-center space-x-6">
@@ -36,8 +42,8 @@ export default function App() {
                   onClick={() => setActiveTab('order')}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                     activeTab === 'order'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      ? 'bg-[#006e4e] text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-black/20'
                   }`}
                 >
                   Order
@@ -46,8 +52,8 @@ export default function App() {
                   onClick={() => setActiveTab('dashboard')}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                     activeTab === 'dashboard'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      ? 'bg-[#006e4e] text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-black/20'
                   }`}
                 >
                   Dashboard
@@ -74,6 +80,6 @@ export default function App() {
           )}
         </PrivyGuard>
       </main>
-    </div>
+    </BackgroundWrapper>
   );
 }

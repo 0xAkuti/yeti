@@ -1,46 +1,10 @@
-import Link from 'next/link';
+import { BackgroundWrapper } from '@/components/BackgroundWrapper';
+import { Header } from '@/components/Header';
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen custom-bg relative">
-      {/* Header */}
-      <header className="border-b border-[#006e4e]/30 bg-black/30 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/logo.png" 
-                alt="YETI Logo" 
-                className="w-12 h-12 rounded-lg object-cover"
-                style={{ width: '48px', height: '48px' }}
-              />
-              <Link href="/" className="text-xl font-black tracking-wider text-white uppercase" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-                YETI
-              </Link>
-            </div>
-            
-            {/* Navigation */}
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/app" className="text-white hover:text-[#006e4e] transition-colors">
-                Trade
-              </Link>
-              <Link href="/docs" className="text-[#006e4e] font-medium">
-                Docs
-              </Link>
-              <Link href="/app" className="text-white hover:text-[#006e4e] transition-colors">
-                Dashboard
-              </Link>
-            </nav>
-            
-            <Link 
-              href="/app"
-              className="bg-[#006e4e] hover:bg-[#005a42] text-white px-6 py-2 rounded-lg font-medium transition-all duration-200"
-            >
-              Launch App
-            </Link>
-          </div>
-        </div>
-      </header>
+    <BackgroundWrapper>
+      <Header />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
@@ -123,6 +87,6 @@ export default function DocsPage() {
           </section>
         </div>
       </main>
-    </div>
+    </BackgroundWrapper>
   );
 } 
