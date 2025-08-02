@@ -44,7 +44,6 @@ USER appuser
 # Set environment variables
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
-ENV DSTACK_SIMULATOR_ENDPOINT="http://host.docker.internal:8090"
 
 # Expose port
 EXPOSE 3001
