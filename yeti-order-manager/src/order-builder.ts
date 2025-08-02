@@ -51,7 +51,8 @@ export class ConditionalOrderBuilder {
                 takerAsset: new Address(params.buy.token),
                 makingAmount,
                 takingAmount,
-                salt: LimitOrder.buildSalt(extension)
+                salt: LimitOrder.buildSalt(extension),
+                receiver: new Address(maker) // Set receiver to maker by default
             },
             makerTraits,
             extension
@@ -63,6 +64,7 @@ export class ConditionalOrderBuilder {
             alertId
         };
     }
+
 
     private createPredicateCalldata(alertId: string, action: Action): string {
         // ABI encode the checkPredicate function call
@@ -86,17 +88,37 @@ export class ConditionalOrderBuilder {
     }
 
     private createChainlinkExtraData(sellToken: string, buyToken: string, oracle: string): string {
-        // For now, assume USDC(6) → WETH(18) conversion using ETH/USD oracle
-        // This should be enhanced to detect token decimals automatically
+        // Detect token decimals for proper spread calculation
+        const sellDecimals = this.getTokenDecimals(sellToken);
+        const buyDecimals = this.getTokenDecimals(buyToken);
         
         const INVERSE_FLAG = 0x80;
         const flags = INVERSE_FLAG.toString(16).padStart(2, '0');
         const oracleAddress = oracle.slice(2);
         
-        // Spread calculation: (10^12 * 10^9) to convert USDC(6) to WETH(18) + spread denominator
-        const spreadWithDecimals = (1e12 * 1e9).toString(16).padStart(64, '0');
+        // Calculate spread to handle decimal differences between tokens
+        // Formula: 10^(buyDecimals - sellDecimals) * 10^9 (for spread denominator)
+        const decimalDifference = buyDecimals - sellDecimals;
+        const spreadWithDecimals = (Math.pow(10, decimalDifference) * 1e9).toString(16).padStart(64, '0');
         
         return '0x' + flags + oracleAddress + spreadWithDecimals;
+    }
+
+    private getTokenDecimals(token: string): number {
+        const commonTokens: Record<string, number> = {
+            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913": 6, // USDC on Base
+            "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2": 6, // USDT on Base
+            "0x4200000000000000000000000000000000000006": 18, // WETH on Base
+            "0xcbB7C0000aB88B473b1f5aFd9ef808440eeD33Bf": 8, // cbBTC on Base
+            // USDC addresses on different chains
+            '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 6, // Mainnet USDC
+            '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174': 6, // Polygon USDC
+            // WETH addresses
+            '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2': 18, // Mainnet WETH
+            '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619': 18, // Polygon WETH
+        };
+        
+        return commonTokens[token.toLowerCase()] || commonTokens[token] || 18; // Default to 18 decimals
     }
 
     private parseAmounts(params: ConditionalOrderParams): { makingAmount: bigint; takingAmount: bigint } {
@@ -112,22 +134,7 @@ export class ConditionalOrderBuilder {
     }
 
     private parseTokenAmount(amount: string, token: string): bigint {
-        // TODO This should be enhanced to automatically detect token decimals
-        // For now, assume common token decimals
-        const commonTokens: Record<string, number> = {
-            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913": 6, // USDC on Base
-            "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2": 6, // USDT on Base
-            "0x4200000000000000000000000000000000000006": 18, // WETH on Base
-            "0xcbB7C0000aB88B473b1f5aFd9ef808440eeD33Bf": 8, // cbBTC on Base
-            // USDC addresses on different chains
-            '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48': 6, // Mainnet USDC
-            '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174': 6, // Polygon USDC
-            // WETH addresses
-            '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2': 18, // Mainnet WETH
-            '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619': 18, // Polygon WETH
-        };
-        
-        const decimals = commonTokens[token] || 18; // Default to 18 decimals
+        const decimals = this.getTokenDecimals(token);
         return parseUnits(amount, decimals);
     }
 
@@ -189,6 +196,7 @@ export class ConditionalOrderBuilder {
     ): CreateOrderRequest {
         const orderStruct = orderData.order.build();
         
+        
         return {
             order_hash: orderData.order.getOrderHash(chainId),
             chain_id: chainId,
@@ -197,10 +205,10 @@ export class ConditionalOrderBuilder {
             taker_asset: orderStruct.takerAsset,
             making_amount: orderStruct.makingAmount.toString(),
             taking_amount: orderStruct.takingAmount.toString(),
-            salt: orderStruct.salt.toString(),
+            salt: orderStruct.salt ? orderStruct.salt.toString() : '0',
             maker_traits: orderStruct.makerTraits.toString(),
             extension: orderData.order.extension?.encode() || '',
-            receiver: orderStruct.receiver,
+            receiver: orderStruct.receiver || orderStruct.maker, // Fallback to maker if receiver is empty
             signature,
             alert_id: orderData.alertId,
             webhook_id: webhookId,
