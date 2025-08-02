@@ -205,6 +205,70 @@ export function useYetiSDK() {
     }
   }, [yetiSDK]);
 
+  // Cancel order on-chain
+  const cancelOrder = useCallback(async (orderHash: string, makerTraits: string) => {
+    if (!connectedWallet || !authenticated) {
+      throw new Error('Wallet not connected or not authenticated');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Get wallet provider for transaction
+      const provider = await connectedWallet.getEthereumProvider();
+      const walletClient = createWalletClient({
+        account: connectedWallet.address as `0x${string}`,
+        chain: base,
+        transport: custom(provider)
+      });
+
+      // Prepare the cancel order transaction
+      const limitOrderProtocolAddress = BASE_CONTRACTS.limitOrderProtocol;
+      
+      // ABI for cancelOrder function
+      const cancelOrderABI = [
+        {
+          name: 'cancelOrder',
+          type: 'function',
+          inputs: [
+            { name: 'makerTraits', type: 'uint256' },
+            { name: 'orderHash', type: 'bytes32' }
+          ],
+          outputs: []
+        }
+      ] as const;
+
+      // Send the transaction
+      const txHash = await walletClient.writeContract({
+        address: limitOrderProtocolAddress as `0x${string}`,
+        abi: cancelOrderABI,
+        functionName: 'cancelOrder',
+        args: [BigInt(makerTraits), orderHash as `0x${string}`]
+      });
+
+      console.log('Cancel order transaction sent:', txHash);
+
+      // Update order status in orderbook (mark as cancelled)
+      if (yetiSDK) {
+        try {
+          await yetiSDK.orderbook.updateOrder(orderHash, { status: 'cancelled' as any });
+          console.log('Order status updated to cancelled in orderbook');
+        } catch (err) {
+          console.warn('Failed to update order status in orderbook:', err);
+        }
+      }
+
+      return txHash;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to cancel order';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [connectedWallet, authenticated, yetiSDK]);
+
   return {
     yetiSDK,
     loading,
@@ -212,6 +276,7 @@ export function useYetiSDK() {
     createLimitOrder,
     submitOrder,
     getUserOrders,
+    cancelOrder,
     isReady: ready && authenticated && !!connectedWallet
   };
 }

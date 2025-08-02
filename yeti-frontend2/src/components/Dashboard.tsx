@@ -98,6 +98,8 @@ interface OrderDetailsModalProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
+  onCancelOrder: (order: Order) => void;
+  isCancelling: boolean;
 }
 
 function CopyButton({ text, displayText, label }: CopyButtonProps) {
@@ -131,7 +133,7 @@ function CopyButton({ text, displayText, label }: CopyButtonProps) {
   );
 }
 
-function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalProps) {
+function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling }: OrderDetailsModalProps) {
   const [tokenPrices, setTokenPrices] = useState<Record<string, number>>({});
   
   // Fetch token prices from 1inch API
@@ -416,8 +418,15 @@ function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalProps) {
         {/* Actions */}
         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-700">
           {order.status === 'pending' && (
-            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm">
-              Cancel Order
+            <button 
+              onClick={() => onCancelOrder(order)}
+              disabled={isCancelling}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm flex items-center space-x-2"
+            >
+              {isCancelling && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              )}
+              <span>{isCancelling ? 'Cancelling...' : 'Cancel Order'}</span>
             </button>
           )}
           <button 
@@ -435,7 +444,7 @@ function OrderDetailsModal({ order, isOpen, onClose }: OrderDetailsModalProps) {
 export function Dashboard() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
-  const { getUserOrders, isReady } = useYetiSDK();
+  const { getUserOrders, isReady, cancelOrder, loading: sdkLoading } = useYetiSDK();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -450,6 +459,9 @@ export function Dashboard() {
   // Modal state
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Track which order is being cancelled
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
 
   const connectedWallet = wallets[0];
 
@@ -461,6 +473,31 @@ export function Dashboard() {
   const closeOrderDetails = () => {
     setSelectedOrder(null);
     setIsModalOpen(false);
+  };
+
+  const handleCancelOrder = async (order: Order) => {
+    if (!cancelOrder) return;
+
+    try {
+      setError(null);
+      setCancellingOrderId(order.id);
+      
+      const txHash = await cancelOrder(order.order_hash, order.maker_traits);
+      console.log('Order cancelled:', txHash);
+      
+      // Refresh the orders list
+      await fetchUserOrders();
+      
+      // Close the modal if it's open
+      if (selectedOrder?.id === order.id) {
+        closeOrderDetails();
+      }
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      setError(err instanceof Error ? err.message : 'Failed to cancel order');
+    } finally {
+      setCancellingOrderId(null);
+    }
   };
 
   useEffect(() => {
@@ -626,6 +663,8 @@ export function Dashboard() {
         order={selectedOrder}
         isOpen={isModalOpen}
         onClose={closeOrderDetails}
+        onCancelOrder={handleCancelOrder}
+        isCancelling={selectedOrder ? cancellingOrderId === selectedOrder.id : false}
       />
       
       <div className="max-w-7xl mx-auto">
@@ -833,8 +872,12 @@ export function Dashboard() {
                       <td className="px-4 py-4">
                         <div className="flex items-center space-x-2">
                           {order.status === 'pending' && (
-                            <button className="text-red-400 hover:text-red-300 text-sm transition-colors">
-                              Cancel
+                            <button 
+                              onClick={() => handleCancelOrder(order)}
+                              disabled={cancellingOrderId === order.id}
+                              className="text-red-400 hover:text-red-300 disabled:text-red-600 text-sm transition-colors"
+                            >
+                              {cancellingOrderId === order.id ? 'Cancelling...' : 'Cancel'}
                             </button>
                           )}
                           <button 
