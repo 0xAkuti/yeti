@@ -23,8 +23,42 @@ const BASE_CONTRACTS: ContractAddresses = {
   limitOrderProtocol: process.env.NEXT_PUBLIC_LIMIT_ORDER_PROTOCOL_ADDRESS || '0x1111111254EEB25477B68fb85Ed929f73A960582'
 };
 
-// ETH/USD oracle on Base (Chainlink)
-const ETH_USD_ORACLE = process.env.NEXT_PUBLIC_ETH_USD_ORACLE_ADDRESS || '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70';
+// Base network oracle addresses
+const BASE_ORACLES: Record<string, string> = {
+  'ETH/USD': '0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70',
+  'USDC/USD': '0x7e860098F58bBFC8648a4311b374B1D669a2bc6B',
+  'USDT/USD': '0xf19d560eB8d2ADf07BD6D13ed03e1D11215721F9',
+  'cbBTC/USD': '0x07DA0E54543a844a80ABE69c8A12F22B3aA59f9D'
+};
+
+// Base network token addresses
+const BASE_TOKENS: Record<string, string> = {
+  '0x4200000000000000000000000000000000000006': 'ETH', // WETH on Base
+  '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913': 'USDC', // USDC on Base
+  '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2': 'USDT', // USDT on Base
+  '0xcbB7C0000aB88B473b1f5aFd9ef808440eeD33Bf': 'cbBTC', // cbBTC on Base
+};
+
+/**
+ * Select appropriate Chainlink oracle based on token pair
+ */
+function selectOracle(sellToken: string, buyToken: string): string {
+  // Get token symbols
+  const sellSymbol = BASE_TOKENS[sellToken.toLowerCase()] || BASE_TOKENS[sellToken];
+  const buySymbol = BASE_TOKENS[buyToken.toLowerCase()] || BASE_TOKENS[buyToken];
+
+  // For trading pairs, determine which oracle to use
+  // If one token is ETH and the other has a USD oracle, use the non-ETH oracle
+  if (sellSymbol === 'ETH' && buySymbol && BASE_ORACLES[`${buySymbol}/USD`]) {
+    return BASE_ORACLES[`${buySymbol}/USD`];
+  }
+  if (buySymbol === 'ETH' && sellSymbol && BASE_ORACLES[`${sellSymbol}/USD`]) {
+    return BASE_ORACLES[`${sellSymbol}/USD`];
+  }
+
+  // Default to ETH/USD for ETH pairs or unknown tokens
+  return BASE_ORACLES['ETH/USD'];
+}
 
 // Configuration validation
 function validateConfiguration() {
@@ -101,6 +135,10 @@ export function useYetiSDK() {
     setError(null);
 
     try {
+      // Select appropriate oracle for the token pair
+      const selectedOracle = selectOracle(params.sellToken, params.buyToken);
+      console.log(`Selected oracle for ${params.sellToken} -> ${params.buyToken}:`, selectedOracle);
+
       // Build order parameters
       const orderParams: ConditionalOrderParams = {
         sell: {
@@ -111,7 +149,7 @@ export function useYetiSDK() {
           token: params.buyToken
         },
         action: params.action,
-        oracle: ETH_USD_ORACLE
+        oracle: selectedOracle
       };
 
       // Create the conditional order (uses proxy URLs automatically)
