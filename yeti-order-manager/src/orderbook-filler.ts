@@ -136,13 +136,19 @@ export class OrderbookFiller {
 
         console.log(`✅ Order filled successfully: ${txHash}`);
 
-        // Record the fill in the orderbook
+        // Get transaction receipt for accurate data
+        const receipt = await this.orderFiller.getProvider().getTransactionReceipt(txHash);
+        if (!receipt) {
+            throw new Error('Failed to get transaction receipt');
+        }
+
+        // Record the fill in the orderbook with actual transaction data
         await this.orderbook.recordOrderFill(storedOrder.order_hash, {
             taker: await this.orderFiller.getSigner().getAddress(),
             filled_amount: storedOrder.making_amount,
             transaction_hash: txHash,
-            block_number: await this.orderFiller.getProvider().getBlockNumber(),
-            gas_used: 150000 // Simple estimate
+            block_number: receipt.blockNumber,
+            gas_used: Number(receipt.gasUsed)
         });
 
         // Update order status to filled
