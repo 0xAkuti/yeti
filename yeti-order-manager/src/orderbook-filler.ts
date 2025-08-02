@@ -2,7 +2,7 @@ import { JsonRpcProvider, Wallet } from 'ethers';
 import { OrderbookClient, StoredOrder, OrderStatus } from './orderbook/index.js';
 import { OrderFiller } from './order-filler.js';
 import { ContractAddresses } from './types.js';
-import { LimitOrder } from '@1inch/limit-order-sdk';
+import { LimitOrder, Address, MakerTraits, Extension } from '@1inch/limit-order-sdk';
 
 /**
  * OrderbookFiller - Monitors orderbook for triggered orders and fills them
@@ -78,34 +78,44 @@ export class OrderbookFiller {
      * Process triggered orders from the orderbook
      */
     private async processTriggteredOrders(batchSize: number, maker?: string): Promise<void> {
-        // Query orderbook for triggered orders
-        const response = await this.orderbook.getOrders({
-            status: OrderStatus.TRIGGERED,
-            maker,
-            limit: batchSize,
-            order_by: 'created_at',
-            order_direction: 'ASC'
-        });
+        try {
+            // Query orderbook for triggered orders
+            const response = await this.orderbook.getOrders({
+                status: OrderStatus.TRIGGERED,
+                maker,
+                limit: batchSize,
+                order_by: 'created_at',
+                order_direction: 'ASC'
+            });
 
-        const triggeredOrders = response.data || [];
-        
-        if (triggeredOrders.length === 0) {
-            return; // No triggered orders to process
-        }
-
-        console.log(`📋 Found ${triggeredOrders.length} triggered orders to fill`);
-
-        // Process each order
-        for (const storedOrder of triggeredOrders) {
-            try {
-                await this.fillStoredOrder(storedOrder);
-            } catch (error) {
-                console.error(`Failed to fill order ${storedOrder.order_hash}:`, error);
-                
-                // Update order status to failed or keep as triggered for retry
-                // depending on the error type
-                await this.handleFillError(storedOrder, error as Error);
+            const triggeredOrders = response.data || [];
+            
+            if (triggeredOrders.length === 0) {
+                return; // No triggered orders to process
             }
+
+            console.log(`📋 Found ${triggeredOrders.length} triggered orders to fill`);
+
+            // Process each order sequentially to avoid gas conflicts
+            for (const storedOrder of triggeredOrders) {
+                if (!this.isRunning) {
+                    console.log('⏹️  Order filling stopped, skipping remaining orders');
+                    break;
+                }
+
+                try {
+                    await this.fillStoredOrder(storedOrder);
+                } catch (error) {
+                    console.error(`❌ Failed to fill order ${storedOrder.order_hash}:`, error);
+                    
+                    // Update order status to failed or keep as triggered for retry
+                    // depending on the error type
+                    await this.handleFillError(storedOrder, error as Error);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error querying orderbook for triggered orders:', error);
+            // Don't throw - this would stop the polling interval
         }
     }
 
@@ -127,13 +137,12 @@ export class OrderbookFiller {
         console.log(`✅ Order filled successfully: ${txHash}`);
 
         // Record the fill in the orderbook
-        // Note: In a real implementation, you'd want to get actual fill details from the transaction
         await this.orderbook.recordOrderFill(storedOrder.order_hash, {
             taker: await this.orderFiller.getSigner().getAddress(),
-            filled_amount: storedOrder.making_amount, // Full fill for simplicity
+            filled_amount: storedOrder.making_amount,
             transaction_hash: txHash,
             block_number: await this.orderFiller.getProvider().getBlockNumber(),
-            gas_used: 150000 // Estimated, should be actual from receipt
+            gas_used: 150000 // Simple estimate
         });
 
         // Update order status to filled
@@ -150,13 +159,22 @@ export class OrderbookFiller {
      * Reconstruct a LimitOrder from stored orderbook data
      */
     private reconstructLimitOrder(storedOrder: StoredOrder): LimitOrder {
-        // This is a simplified reconstruction
-        // In a real implementation, you'd need to properly reconstruct
-        // the LimitOrder with all its extensions and traits
-        
-        // For now, we'll assume the OrderFiller can work with the basic order data
-        // The actual implementation would depend on how orders are stored and reconstructed
-        throw new Error('LimitOrder reconstruction not implemented - needs proper extension handling');
+        // Simple extension handling - just use type assertion to avoid 1inch SDK type issues
+        const extension = Extension.decode(storedOrder.extension);
+
+        return new LimitOrder(
+            {
+                maker: new Address(storedOrder.maker),
+                makerAsset: new Address(storedOrder.maker_asset),
+                takerAsset: new Address(storedOrder.taker_asset),
+                makingAmount: BigInt(storedOrder.making_amount),
+                takingAmount: BigInt(storedOrder.taking_amount),
+                salt: BigInt(storedOrder.salt),
+                receiver: new Address(storedOrder.receiver)
+            },
+            new MakerTraits(BigInt(storedOrder.maker_traits)),
+            extension
+        );
     }
 
     /**
