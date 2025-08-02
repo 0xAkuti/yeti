@@ -16,6 +16,7 @@
     "end-to-end": "tsx src/end-to-end-test.ts",
     "sdk-test": "tsx src/sdk-end-to-end-test.ts",
     "sdk-test-auto": "tsx src/sdk-end-to-end-test.ts --auto-fill",
+    "watch-orders": "tsx src/order-watcher.ts",
     "dev": "tsx src/index.ts",
     "example": "tsx src/example-usage.ts",
     "lint": "eslint src/**/*.ts",
