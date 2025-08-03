@@ -398,9 +398,9 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
     return (
       <div className="w-full max-w-md mx-auto">
         <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-center mb-6">
-            <h2 className="text-lg font-semibold text-white">Setup TradingView</h2>
+          {/* Step 1 Header */}
+          <div className="mb-4 text-center">
+            <h2 className="text-lg font-semibold text-white">1. Setup Alert with your indicator</h2>
           </div>
 
           {/* Open TradingView Button */}
@@ -412,65 +412,64 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              <span>Open TradingView ({getTradingViewSymbol(sellToken, buyToken)})</span>
+              <span>Open TradingView</span>
             </button>
           </div>
 
-          {/* Copy Section */}
-          <div className="space-y-4 mb-6">
-            {/* Webhook URL Copy */}
-            <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
-              <div>
-                <div className="text-sm font-medium text-white">Webhook URL</div>
-                <div className="text-xs text-gray-400">Step 1: Copy this URL</div>
-              </div>
-              <button
-                onClick={() => copyToClipboard(webhookUrl, 'webhook')}
-                className={`w-24 px-4 py-2 text-sm rounded-lg transition-all duration-200 transform flex items-center justify-center space-x-2 font-medium ${
-                  copiedField === 'webhook'
-                    ? 'bg-green-600 text-white scale-105 shadow-lg'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 shadow-md'
-                }`}
-              >
-                {copiedField === 'webhook' ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                )}
-                <span>{copiedField === 'webhook' ? 'Copied!' : 'Copy'}</span>
-              </button>
-            </div>
+          {/* Step 2 Header */}
+          <div className="mb-4 text-center">
+            <h2 className="text-lg font-semibold text-white">2. Set Alert Message</h2>
+          </div>
 
-            {/* Alert Message Copy */}
-            <div className="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
-              <div>
-                <div className="text-sm font-medium text-white">Alert Message</div>
-                <div className="text-xs text-gray-400">Step 2: Copy this message</div>
-              </div>
-              <button
-                onClick={() => copyToClipboard(alertMessage, 'alert')}
-                className={`w-24 px-4 py-2 text-sm rounded-lg transition-all duration-200 transform flex items-center justify-center space-x-2 font-medium ${
-                  copiedField === 'alert'
-                    ? 'bg-green-600 text-white scale-105 shadow-lg'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 shadow-md'
-                }`}
-              >
-                {copiedField === 'alert' ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                )}
-                <span>{copiedField === 'alert' ? 'Copied!' : 'Copy'}</span>
-              </button>
-            </div>
+          {/* Copy Alert Message Button */}
+          <div className="mb-6 text-center">
+            <button
+              onClick={() => copyToClipboard(alertMessage, 'alert')}
+              className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 transform shadow-lg flex items-center space-x-2 mx-auto ${
+                copiedField === 'alert'
+                  ? 'bg-green-600 hover:bg-green-700 text-white scale-105'
+                  : 'bg-gradient-to-r from-[#006e4e] to-[#008f6a] hover:from-[#005a42] hover:to-[#007055] text-white hover:scale-105'
+              }`}
+            >
+              {copiedField === 'alert' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+              <span>{copiedField === 'alert' ? 'Copied Alert Message!' : 'Copy Alert Message'}</span>
+            </button>
+          </div>
+
+          {/* Step 3 Header */}
+          <div className="mb-4 text-center">
+            <h2 className="text-lg font-semibold text-white">3. Enable and set Webhook URL</h2>
+          </div>
+
+          {/* Copy Webhook URL Button */}
+          <div className="mb-6 text-center">
+            <button
+              onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+              className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 transform shadow-lg flex items-center space-x-2 mx-auto ${
+                copiedField === 'webhook'
+                  ? 'bg-green-600 hover:bg-green-700 text-white scale-105'
+                  : 'bg-gradient-to-r from-[#006e4e] to-[#008f6a] hover:from-[#005a42] hover:to-[#007055] text-white hover:scale-105'
+              }`}
+            >
+              {copiedField === 'webhook' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+              <span>{copiedField === 'webhook' ? 'Copied Webhook URL!' : 'Copy Webhook URL'}</span>
+            </button>
           </div>
 
           {/* Help Button */}
@@ -482,7 +481,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>How to setup TradingView alert?</span>
+              <span>Detailed Instructions</span>
               <svg className={`w-4 h-4 transition-transform ${showHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
@@ -509,7 +508,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
                   onClick={openTradingView}
                   className="text-blue-400 hover:text-blue-300 text-sm underline"
                 >
-                  Open TradingView ({getTradingViewSymbol(sellToken, buyToken)})
+                  Open TradingView
                 </button>
               </div>
             </div>
