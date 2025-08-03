@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  yeti-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3009:3000"  # Frontend
+      - "3002:3002"  # Orderbook server
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${PORT:-3000}
+      - ORDERBOOK_PORT=${ORDERBOOK_PORT:-3002}
+      - DB_PATH=${DB_PATH:-/app/orderbook-server/data/orders.db}
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/orderbook-server/data
+      # Optional: mount logs for debugging
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy for production-like setup
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - yeti-app
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  data:
+  logs: 
