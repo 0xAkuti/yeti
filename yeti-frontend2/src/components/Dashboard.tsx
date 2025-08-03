@@ -216,7 +216,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
       />
       
       {/* Modal */}
-      <div className="relative bg-gray-800 rounded-xl shadow-2xl border border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+<div className="relative bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -247,13 +247,13 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
           <div className="lg:col-span-2 space-y-4">
             {/* Amounts */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-700/20 p-3 rounded-lg">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
                 <label className="text-xs text-gray-400 block mb-1">Selling</label>
                 <div className="text-white font-medium">{formatAmount(order.making_amount, makerToken.decimals)} {makerToken.symbol}</div>
                 <div className="text-xs text-gray-400">{estimateUSDValue(order.making_amount, makerToken.decimals, order.maker_asset)}</div>
               </div>
               
-              <div className="bg-gray-700/20 p-3 rounded-lg">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
                 <label className="text-xs text-gray-400 block mb-1">For (estimated at current prices)</label>
                 <div className="text-white font-medium">~{calculateEstimatedTakerAmount()} {takerToken.symbol}</div>
                 <div className="text-xs text-gray-400">{estimateUSDValue(order.making_amount, makerToken.decimals, order.maker_asset)}</div>
@@ -261,7 +261,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
             </div>
 
             {/* Fill Progress */}
-            <div className="bg-gray-700/20 p-3 rounded-lg">
+            <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
               <label className="text-xs text-gray-400 block mb-1">Fill Progress</label>
               <div className="flex items-center justify-between text-sm text-white mb-1">
                 <span>{fillPercentage.toFixed(1)}%</span>
@@ -277,7 +277,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
 
             {/* Identifiers */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-700/20 p-2 rounded">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-2 rounded">
                 <label className="text-xs text-gray-400 block mb-1">Order Hash</label>
                 <CopyButton 
                   text={order.order_hash}
@@ -285,7 +285,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
                   label="Order Hash"
                 />
               </div>
-              <div className="bg-gray-700/20 p-2 rounded">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-2 rounded">
                 <label className="text-xs text-gray-400 block mb-1">Alert ID</label>
                 <CopyButton 
                   text={order.alert_id}
@@ -293,7 +293,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
                   label="Alert ID"
                 />
               </div>
-              <div className="bg-gray-700/20 p-2 rounded">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-2 rounded">
                 <label className="text-xs text-gray-400 block mb-1">Webhook ID</label>
                 <CopyButton 
                   text={order.webhook_id}
@@ -301,7 +301,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
                   label="Webhook ID"
                 />
               </div>
-              <div className="bg-gray-700/20 p-2 rounded">
+              <div className="bg-gray-700/20 backdrop-blur-sm p-2 rounded">
                 <label className="text-xs text-gray-400 block mb-1">Maker</label>
                 <div className="flex items-center space-x-1">
                   <CopyButton 
@@ -327,7 +327,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
           {/* Right Column - Assets & Dates */}
           <div className="space-y-4">
             {/* Assets */}
-            <div className="bg-gray-700/20 p-3 rounded-lg">
+            <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
               <label className="text-xs text-gray-400 block mb-2">Assets</label>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -374,7 +374,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
             </div>
 
             {/* Dates */}
-            <div className="bg-gray-700/20 p-3 rounded-lg">
+            <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
               <label className="text-xs text-gray-400 block mb-2">Timeline</label>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
@@ -395,7 +395,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onCancelOrder, isCancelling
             </div>
 
             {/* Technical */}
-            <div className="bg-gray-700/20 p-3 rounded-lg">
+            <div className="bg-gray-700/20 backdrop-blur-sm p-3 rounded-lg">
               <label className="text-xs text-gray-400 block mb-2">Technical</label>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
@@ -683,7 +683,7 @@ export function Dashboard() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+      <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-700">
         <div className="flex items-center space-x-2">
           <label className="text-sm text-gray-400">Status:</label>
           <select
@@ -732,10 +732,10 @@ export function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="bg-gray-800/30 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="bg-gray-800/30 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50 border-b border-gray-700">
+              <thead className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
                 <tr>
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"

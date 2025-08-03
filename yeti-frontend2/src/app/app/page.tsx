@@ -71,7 +71,7 @@ export default function App() {
           <PrivyGuard>
             {activeTab === 'order' && (
               <div className="flex flex-col items-center justify-start min-h-[calc(100vh-300px)]">
-                <div className="w-full max-w-md mx-auto">
+                <div className="w-full flex flex-col items-center">
                   <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-white mb-4">
                       Create Your <span className="text-[#00ff88]">YETI</span> Order
@@ -80,7 +80,7 @@ export default function App() {
                       Set up automated limit orders triggered by TradingView alerts
                     </p>
                   </div>
-                  <div className="flex justify-center">
+                  <div className="flex justify-center w-full">
                     <TradingInterface onNavigateToDashboard={handleNavigateToDashboard} />
                   </div>
                 </div>
