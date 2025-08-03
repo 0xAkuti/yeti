@@ -72,6 +72,46 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
     }
   };
 
+  // Function to get TradingView symbol from token pair
+  const getTradingViewSymbol = (sellToken: Token, buyToken: Token) => {
+    // Map token addresses to TradingView symbols
+    const tokenSymbolMap: Record<string, string> = {
+      // ETH tokens
+      '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee': 'ETH',
+      '0x4200000000000000000000000000000000000006': 'ETH', // WETH
+      // BTC tokens
+      '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': 'BTC', // WBTC
+      '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf': 'BTC', // cbBTC
+      // USD tokens
+      '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': 'USD', // USDC
+      '0xfde4c96c8593536e31f229ea8f37b2ada2699bb2': 'USD', // USDT
+      '0x50c5725949a6f0c72e6c4a641f24049a917db0cb': 'USD', // DAI
+    };
+
+    const sellSymbol = tokenSymbolMap[sellToken.address.toLowerCase()] || sellToken.symbol;
+    const buySymbol = tokenSymbolMap[buyToken.address.toLowerCase()] || buyToken.symbol;
+
+    // Handle reversed USD pairs (when USD is the sell token)
+    if (sellSymbol === 'USD' && (buySymbol === 'ETH' || buySymbol === 'BTC')) {
+      return `1/${buySymbol}USD`;
+    }
+    
+    // Standard pairs (crypto to USD)
+    if (buySymbol === 'USD' && (sellSymbol === 'ETH' || sellSymbol === 'BTC')) {
+      return `${sellSymbol}USD`;
+    }
+
+    // Fallback for other pairs
+    return `${sellSymbol}${buySymbol}`;
+  };
+
+  // Function to open TradingView chart
+  const openTradingView = () => {
+    const symbol = getTradingViewSymbol(sellToken, buyToken);
+    const url = `https://www.tradingview.com/chart/?symbol=${symbol}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   // Get token balance and prices
   const sellTokenBalance = getTokenBalance(sellToken.address);
   const sellTokenPrice = getTokenPrice(sellToken.address);
@@ -363,6 +403,19 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
             <h2 className="text-lg font-semibold text-white">Setup TradingView</h2>
           </div>
 
+          {/* Open TradingView Button */}
+          <div className="mb-6 text-center">
+            <button
+              onClick={openTradingView}
+              className="bg-gradient-to-r from-[#006e4e] to-[#008f6a] hover:from-[#005a42] hover:to-[#007055] text-white px-6 py-3 rounded-lg font-bold transition-all duration-200 transform hover:scale-105 shadow-lg flex items-center space-x-2 mx-auto"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span>Open TradingView ({getTradingViewSymbol(sellToken, buyToken)})</span>
+            </button>
+          </div>
+
           {/* Copy Section */}
           <div className="space-y-4 mb-6">
             {/* Webhook URL Copy */}
@@ -452,14 +505,12 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
                 <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
-                <a 
-                  href="https://www.tradingview.com/chart/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 text-sm"
+                <button 
+                  onClick={openTradingView}
+                  className="text-blue-400 hover:text-blue-300 text-sm underline"
                 >
-                  Open TradingView
-                </a>
+                  Open TradingView ({getTradingViewSymbol(sellToken, buyToken)})
+                </button>
               </div>
             </div>
           )}
