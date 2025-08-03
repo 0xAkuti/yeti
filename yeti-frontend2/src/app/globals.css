@@ -17,6 +17,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-blaka: var(--font-blaka);
 }
 
 body {
@@ -200,3 +201,5 @@ body {
 .animate-twinkle-slow {
   animation: twinkle-slow 3s ease-in-out infinite;
 }
+
+

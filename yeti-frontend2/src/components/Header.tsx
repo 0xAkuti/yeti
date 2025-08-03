@@ -18,37 +18,39 @@ export function Header({ showNavigation = true }: HeaderProps) {
             <img 
               src="/logo.png" 
               alt="YETI Logo" 
-              className="w-12 h-12 rounded-lg object-cover shadow-lg"
-              style={{ width: '48px', height: '48px' }}
+              className="w-16 h-16 rounded-lg object-cover shadow-lg"
+              style={{ width: '64px', height: '64px' }}
             />
-            <Link href="/" className="text-xl font-black tracking-wider text-white uppercase hover:text-[#00ff88] transition-colors duration-200" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <Link href="/" className="text-6xl text-white uppercase hover:text-[#00ff88] transition-colors duration-200" style={{ fontFamily: 'var(--font-blaka)' }}>
               YETI
             </Link>
           </div>
           
           {showNavigation && (
             <>
-              <nav className="hidden md:flex items-center space-x-8">
-                <Link 
-                  href="/app" 
-                  className={`transition-all duration-200 font-medium ${
-                    pathname === '/app' 
-                      ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
-                      : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
-                  }`}
-                >
-                  Trade
-                </Link>
-                <Link 
-                  href="/docs" 
-                  className={`transition-all duration-200 font-medium ${
-                    pathname === '/docs' 
-                      ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
-                      : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
-                  }`}
-                >
-                  Docs
-                </Link>
+              <nav className="hidden md:flex items-center justify-center flex-1 mx-12">
+                <div className="flex items-center space-x-16">
+                  <Link 
+                    href="/app" 
+                    className={`transition-all duration-200 font-medium text-lg ${
+                      pathname === '/app' 
+                        ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
+                        : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
+                    }`}
+                  >
+                    Trade
+                  </Link>
+                  <Link 
+                    href="/docs" 
+                    className={`transition-all duration-200 font-medium text-lg ${
+                      pathname === '/docs' 
+                        ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
+                        : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
+                    }`}
+                  >
+                    Docs
+                  </Link>
+                </div>
               </nav>
               
               <Link 

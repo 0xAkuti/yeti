@@ -177,7 +177,7 @@ export default function Home() {
               >
                 <Link 
                   href="/docs"
-                  className="border-2 border-[#006e4e] text-[#006e4e] hover:bg-[#006e4e] hover:text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 inline-block text-center"
+                  className="border-2 border-[#00ff88] text-[#00ff88] hover:bg-[#00ff88] hover:text-black px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 inline-block text-center"
                 >
                   Learn How
                 </Link>
@@ -215,16 +215,20 @@ export default function Home() {
               transition: { duration: 0.3 }
             }}
           >
-            <motion.p 
-              className="text-xl text-gray-300 text-center leading-relaxed"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              Keep using the strategies and indicators you already know and love. YETI bridges your TradingView alerts 
-              to the DeFi world, giving you unlimited flexibility beyond simple DCA, TWAP, or grid trading bots.
-            </motion.p>
+                         <motion.div 
+               className="text-xl text-gray-300 text-center leading-relaxed space-y-4"
+               initial={{ opacity: 0 }}
+               whileInView={{ opacity: 1 }}
+               viewport={{ once: true }}
+               transition={{ duration: 0.8, delay: 0.6 }}
+             >
+               <p>
+                 Keep using the strategies and indicators <span className="text-[#00ff88] font-semibold">you already know and love</span>. 
+               </p>
+               <p>
+                 YETI bridges your TradingView alerts to the DeFi world, giving you <span className="text-[#00ff88] font-semibold">unlimited flexibility</span> beyond simple DCA, TWAP, or grid trading bots.
+               </p>
+             </motion.div>
           </motion.div>
         </motion.div>
 

@@ -37,7 +37,7 @@ export function ConnectButton() {
   return (
     <button
       onClick={handleConnect}
-      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-xl transition-colors disabled:bg-gray-600"
+      className="w-full bg-[#006e4e] hover:bg-[#005a42] text-white font-semibold py-4 rounded-xl transition-colors disabled:bg-gray-600"
       disabled={!ready}
     >
       {authenticated && walletAddress ? (

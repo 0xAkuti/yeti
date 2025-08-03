@@ -40,15 +40,15 @@ export default function App() {
                 <motion.img 
                   src="/logo.png" 
                   alt="YETI Logo" 
-                  className="w-12 h-12 rounded-lg object-cover"
-                  style={{ width: '48px', height: '48px' }}
+                  className="w-16 h-16 rounded-lg object-cover shadow-lg"
+                  style={{ width: '64px', height: '64px' }}
                   whileHover={{ 
                     scale: 1.1,
                     rotate: [0, -5, 5, 0],
                     transition: { duration: 0.3 }
                   }}
                 />
-                <Link href="/" className="text-xl font-black tracking-wider text-white uppercase" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+                <Link href="/" className="text-6xl text-white uppercase hover:text-[#00ff88] transition-colors duration-200" style={{ fontFamily: 'var(--font-blaka)' }}>
                   YETI
                 </Link>
               </motion.div>
