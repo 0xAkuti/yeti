@@ -1,10 +1,12 @@
 # YETI - TradingView to DeFi Bridge
 
+Built with ❄️ by the YETI team for EthGlobal Unite DeFi Hackathon 2025
+
 <div align="center">
   <img src="yeti-frontend2/public/hero-yeti.png" alt="YETI - TradingView to 1inch" height="512" />
 </div>
 
-YETI is a comprehensive DeFi trading infrastructure that bridges TradingView alerts to automated on-chain limit orders using the 1inch Limit Order Protocol. Built for the EthGlobal Unite DeFi Hackathon, YETI transforms your existing TradingView strategies into secure, non-custodial, automated trading systems.
+YETI is a DeFi trading app that bridges TradingView alerts to automated on-chain limit orders using the 1inch Limit Order Protocol. Built for the EthGlobal Unite DeFi Hackathon, YETI transforms your existing TradingView strategies into secure, non-custodial, automated trading systems.
 
 ## Architecture Overview
 
@@ -18,7 +20,7 @@ TradingView Alert → Webhook Server → Smart Contracts → Order Execution
 
 ### Core Components
 
-1. **Webhook Server** (Python/FastAPI) - Receives and validates TradingView webhooks
+1. **Webhook Server** (Python/FastAPI) - Receives and validates TradingView webhooks; Running in a TEE
 2. **Smart Contracts** (Solidity) - On-chain oracle and predicate validation
 3. **Frontend Application** (Next.js/React) - User interface for order management
 4. **Yeti SDK** (TypeScript) - Core library for order creation and management
@@ -46,8 +48,6 @@ TradingView Alert → Webhook Server → Smart Contracts → Order Execution
 
 ### 1. Create a Conditional Order
 
-Using the frontend application:
-
 1. Connect your wallet
 2. Select trading pair and amounts
 3. Sign the order (no funds transferred)
@@ -63,13 +63,15 @@ Using the frontend application:
 
 ### 3. Order Execution
 
-When your TradingView alert fires:
+When your TradingView alert triggers:
 
 1. Webhook server receives and validates the alert
 2. Alert data is stored on-chain via WebhookOracle
 3. Order watcher detects the alert
 4. Takers can execute the 1inch limit order
 5. Order status updates in the orderbook
+
+You can check pending and filled ordered in the Dashboard.
 
 ## Quick Start
 
@@ -366,14 +368,4 @@ MIT License - see LICENSE file for details.
 - **TradingView**: For powerful charting and alert capabilities
 - **Chainlink**: For reliable price oracle infrastructure
 
-## Support
 
-For questions and support:
-
-- Create an issue in this repository
-- Join our Discord community
-- Check the documentation at `/docs`
-
----
-
-Built with ❄️ by the YETI team for EthGlobal Unite DeFi Hackathon 2025
