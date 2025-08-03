@@ -26,16 +26,6 @@ export function Footer() {
 
           {/* Navigation and Social */}
           <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
-            {/* Quick Links */}
-            <div className="flex space-x-6">
-              <Link href="/app" className="text-gray-400 hover:text-[#00ff88] transition-colors text-sm font-medium">
-                Launch App
-              </Link>
-              <Link href="/docs" className="text-gray-400 hover:text-[#00ff88] transition-colors text-sm font-medium">
-                Docs
-              </Link>
-            </div>
-            
             {/* Social Links */}
             <div className="flex space-x-4">
               <a 
@@ -50,7 +40,7 @@ export function Footer() {
                 </svg>
               </a>
               <a 
-                href="https://github.com" 
+                href="https://github.com/0xAkuti/yeti" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-[#00ff88] transition-colors"
@@ -65,9 +55,15 @@ export function Footer() {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t border-[#006e4e]/20 mt-6 pt-6 text-center">
-          <div className="text-gray-400 text-sm">
-            © {new Date().getFullYear()} YETI. Built for DeFi traders who don't mess around.
+        <div className="border-t border-[#006e4e]/20 mt-6 pt-6">
+          <div className="text-center space-y-2">
+            <div className="text-gray-400 text-sm">
+              © {new Date().getFullYear()} YETI. Built for DeFi traders who don't mess around.
+            </div>
+            <div className="text-xs text-gray-500 max-w-2xl mx-auto">
+              This is a prototype built for <a href="https://ethglobal.com/showcase/yeti-5fius" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#00ff88]">EthGlobal Unite DeFi</a> hackathon.
+              Use at your own risk. Always verify smart contracts and test with small amounts first.
+            </div>
           </div>
         </div>
       </div>
