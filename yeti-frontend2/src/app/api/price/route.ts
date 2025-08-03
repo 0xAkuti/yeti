@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ONEINCH_API_KEY = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+const ONEINCH_API_KEY = process.env['1INCH_API_KEY'];
 const BASE_CHAIN_ID = 8453; // Base network
 
 export async function GET(request: NextRequest) {
