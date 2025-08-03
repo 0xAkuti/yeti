@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "yeti-frontend2/package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "orderbook-server/src/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["orderbook-server/data/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/orderbook/(.*)",
+      "dest": "orderbook-server/src/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "yeti-frontend2/$1"
+    }
+  ],
+  "functions": {
+    "orderbook-server/src/index.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}
