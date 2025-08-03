@@ -40,9 +40,9 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-xl text-gray-300 mb-8 max-w-lg leading-relaxed">
-              Supercharge your DeFi trading.
+              Transform your TradingView strategies into automated DeFi trades.
               <br />
-              Connect TradingView alerts to automated limit orders on 1inch.
+              Connect alerts to secure, on-chain limit orders powered by 1inch.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
@@ -64,18 +64,18 @@ export default function Home() {
         
         {/* Why TradingView Section */}
         <div className="max-w-4xl mx-auto mt-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Why TradingView?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Your TradingView, Supercharged</h2>
           <div className="bg-gradient-to-br from-black/40 to-black/20 p-8 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm shadow-2xl">
             <p className="text-xl text-gray-300 text-center leading-relaxed">
-              Automate your favourite strategies you already use, and the trading tools you already love. 
-              Allow you to have maximum flexibility in your trading strategies, not limited to DCA, TWAP, and grid trading.
+              Keep using the strategies and indicators you already know and love. YETI bridges your TradingView alerts 
+              to the DeFi world, giving you unlimited flexibility beyond simple DCA, TWAP, or grid trading bots.
             </p>
           </div>
         </div>
 
         {/* Features Section */}
         <div className="max-w-6xl mx-auto mt-20 mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Why YETI?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Built for Serious Traders</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-gradient-to-br from-black/40 to-black/20 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 hover:border-[#006e4e]/50 transition-all duration-300 shadow-xl group">
               <div className="w-12 h-12 bg-gradient-to-br from-[#006e4e] to-[#008f6a] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -83,9 +83,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Smart Contract Security</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Non-Custodial Security</h3>
               <p className="text-gray-400">
-                Your private keys stay in your wallet. Uses predicates and on-chain verification for maximum security.
+                Your funds never leave your wallet. All trades execute through audited smart contracts with cryptographic verification.
               </p>
             </div>
             
@@ -96,9 +96,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Full Control</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Professional Grade</h3>
               <p className="text-gray-400">
-                You maintain complete control of your funds. No centralized servers or third-party custody.
+                Execute complex strategies with institutional-level precision. No API rate limits or server downtime.
               </p>
             </div>
             
@@ -108,9 +108,9 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">Transparent & Auditable</h3>
+              <h3 className="text-xl font-semibold text-white mb-3">Open & Verifiable</h3>
               <p className="text-gray-400">
-                Every trade is cryptographically verified on-chain. Audit the smart contract code yourself.
+                Every trade is recorded on-chain with full transparency. Verify execution, audit smart contracts, track performance.
               </p>
             </div>
           </div>
