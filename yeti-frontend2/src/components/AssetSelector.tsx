@@ -60,7 +60,7 @@ export function AssetSelector({ selectedToken, onSelect, tokens }: AssetSelector
                     className="w-full flex items-center space-x-3 p-3 hover:bg-gray-700 rounded-xl transition-colors text-left"
                   >
                     {/* Token Icon */}
-                    <TokenIcon src={token.logoURI} symbol={token.symbol} size={32} />
+                    <TokenIcon src={token.logoURI || ''} symbol={token.symbol} size={32} />
                     
                     {/* Token Info */}
                     <div className="flex-1">

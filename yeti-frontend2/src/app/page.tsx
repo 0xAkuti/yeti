@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BackgroundWrapper } from '@/components/BackgroundWrapper';
 import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 
 export default function Home() {
   return (
@@ -13,7 +14,7 @@ export default function Home() {
           {/* Left Content - Large Circular Graphic */}
           <div className="lg:w-1/2 flex justify-center mb-12 lg:mb-0">
             <div className="relative">
-              <div className="w-96 h-96 bg-gradient-to-br from-[#1a2036] to-[#0f1419] rounded-full flex items-center justify-center border-4 border-[#006e4e] shadow-2xl">
+              <div className="w-96 h-96 bg-gradient-to-br from-[#1a2036] to-[#0f1419] rounded-full flex items-center justify-center border-4 border-[#006e4e] shadow-2xl transform hover:scale-105 transition-transform duration-300">
                 <div className="w-80 h-80 bg-gradient-to-br from-[#006e4e]/10 to-[#008f6a]/10 rounded-full flex items-center justify-center">
                   <img 
                     src="/hero-yeti.png" 
@@ -22,6 +23,10 @@ export default function Home() {
                   />
                 </div>
               </div>
+              {/* Floating particles */}
+              <div className="absolute -top-4 -right-4 w-3 h-3 bg-[#00ff88] rounded-full animate-twinkle"></div>
+              <div className="absolute top-1/4 -left-6 w-2 h-2 bg-[#006e4e] rounded-full animate-twinkle-delayed"></div>
+              <div className="absolute bottom-1/4 -right-8 w-4 h-4 bg-[#00ff88]/50 rounded-full animate-twinkle-slow"></div>
             </div>
           </div>
           
@@ -41,19 +46,27 @@ export default function Home() {
               Connect TradingView alerts to automated limit orders on 1inch.
             </p>
             
-            <Link 
-              href="/app"
-              className="bg-[#006e4e] hover:bg-[#005a42] text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 inline-block shadow-lg"
-            >
-              Start Trading
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link 
+                href="/app"
+                className="bg-gradient-to-r from-[#006e4e] to-[#008f6a] hover:from-[#005a42] hover:to-[#007055] text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 inline-block shadow-lg transform hover:scale-105 text-center"
+              >
+                Start Trading
+              </Link>
+              <Link 
+                href="/docs"
+                className="border-2 border-[#006e4e] text-[#006e4e] hover:bg-[#006e4e] hover:text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 inline-block text-center"
+              >
+                Learn How
+              </Link>
+            </div>
           </div>
         </div>
         
         {/* Why TradingView Section */}
         <div className="max-w-4xl mx-auto mt-20">
-          <h2 className="text-3xl font-bold text-white mb-8 text-center">Why TradingView?</h2>
-          <div className="bg-black/30 p-8 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Why TradingView?</h2>
+          <div className="bg-gradient-to-br from-black/40 to-black/20 p-8 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm shadow-2xl">
             <p className="text-xl text-gray-300 text-center leading-relaxed">
               Automate your favourite strategies you already use, and the trading tools you already love. 
               Allow you to have maximum flexibility in your trading strategies, not limited to DCA, TWAP, and grid trading.
@@ -62,11 +75,11 @@ export default function Home() {
         </div>
 
         {/* Features Section */}
-        <div className="max-w-6xl mx-auto mt-20">
-          <h2 className="text-3xl font-bold text-white mb-8 text-center">Why YETI?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-black/30 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 transition-all duration-200">
-              <div className="w-12 h-12 bg-[#006e4e] rounded-lg flex items-center justify-center mb-4">
+        <div className="max-w-6xl mx-auto mt-20 mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">Why YETI?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-gradient-to-br from-black/40 to-black/20 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 hover:border-[#006e4e]/50 transition-all duration-300 shadow-xl group">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#006e4e] to-[#008f6a] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
@@ -77,8 +90,8 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="bg-black/30 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 transition-all duration-200">
-              <div className="w-12 h-12 bg-[#006e4e] rounded-lg flex items-center justify-center mb-4">
+            <div className="bg-gradient-to-br from-black/40 to-black/20 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 hover:border-[#006e4e]/50 transition-all duration-300 shadow-xl group">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#006e4e] to-[#008f6a] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -90,8 +103,8 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="bg-black/30 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 transition-all duration-200">
-              <div className="w-12 h-12 bg-[#006e4e] rounded-lg flex items-center justify-center mb-4">
+            <div className="bg-gradient-to-br from-black/40 to-black/20 p-6 rounded-xl border border-[#006e4e]/30 backdrop-blur-sm hover:bg-black/40 hover:border-[#006e4e]/50 transition-all duration-300 shadow-xl group">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#006e4e] to-[#008f6a] rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -104,6 +117,8 @@ export default function Home() {
           </div>
         </div>
       </main>
+      
+      <Footer />
     </BackgroundWrapper>
   );
 }

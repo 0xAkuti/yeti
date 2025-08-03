@@ -14,8 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Yeti DEX",
-  description: "TradingView triggered limit orders on Base",
+  title: "YETI DEX - Trade DeFi like a YETI",
+  description: "Automate your TradingView strategies with secure, decentralized limit orders on Base. Connect TradingView alerts to automated trading.",
+  keywords: ["DeFi", "TradingView", "limit orders", "automated trading", "Base", "1inch", "cryptocurrency"],
+  authors: [{ name: "YETI DEX" }],
+  openGraph: {
+    title: "YETI DEX - Trade DeFi like a YETI",
+    description: "Automate your TradingView strategies with secure, decentralized limit orders",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -26,10 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-900 text-white min-h-screen flex flex-col`}
       >
         <Providers>
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

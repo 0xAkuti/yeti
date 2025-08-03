@@ -11,17 +11,17 @@ export function Header({ showNavigation = true }: HeaderProps) {
   const pathname = usePathname();
   
   return (
-    <header className="border-b border-[#006e4e]/30 bg-black/30 backdrop-blur-sm">
+    <header className="border-b border-[#006e4e]/30 bg-black/40 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img 
               src="/logo.png" 
               alt="YETI Logo" 
-              className="w-12 h-12 rounded-lg object-cover"
+              className="w-12 h-12 rounded-lg object-cover shadow-lg"
               style={{ width: '48px', height: '48px' }}
             />
-            <Link href="/" className="text-xl font-black tracking-wider text-white uppercase" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <Link href="/" className="text-xl font-black tracking-wider text-white uppercase hover:text-[#00ff88] transition-colors duration-200" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
               YETI
             </Link>
           </div>
@@ -31,39 +31,29 @@ export function Header({ showNavigation = true }: HeaderProps) {
               <nav className="hidden md:flex items-center space-x-8">
                 <Link 
                   href="/app" 
-                  className={`transition-colors ${
+                  className={`transition-all duration-200 font-medium ${
                     pathname === '/app' 
-                      ? 'text-[#006e4e] font-medium' 
-                      : 'text-white hover:text-[#006e4e]'
+                      ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
+                      : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
                   }`}
                 >
                   Trade
                 </Link>
                 <Link 
                   href="/docs" 
-                  className={`transition-colors ${
+                  className={`transition-all duration-200 font-medium ${
                     pathname === '/docs' 
-                      ? 'text-[#006e4e] font-medium' 
-                      : 'text-white hover:text-[#006e4e]'
+                      ? 'text-[#00ff88] font-semibold drop-shadow-[0_0_8px_#00ff88]' 
+                      : 'text-white hover:text-[#00ff88] hover:drop-shadow-[0_0_4px_#00ff88]'
                   }`}
                 >
                   Docs
-                </Link>
-                <Link 
-                  href="/app" 
-                  className={`transition-colors ${
-                    pathname === '/app' 
-                      ? 'text-[#006e4e] font-medium' 
-                      : 'text-white hover:text-[#006e4e]'
-                  }`}
-                >
-                  Dashboard
                 </Link>
               </nav>
               
               <Link 
                 href="/app"
-                className="bg-[#006e4e] hover:bg-[#005a42] text-white px-6 py-2 rounded-lg font-medium transition-all duration-200"
+                className="bg-gradient-to-r from-[#006e4e] to-[#008f6a] hover:from-[#005a42] hover:to-[#007055] text-white px-6 py-3 rounded-lg font-bold transition-all duration-200 transform hover:scale-105 shadow-lg"
               >
                 Launch App
               </Link>

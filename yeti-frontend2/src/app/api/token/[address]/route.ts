@@ -5,9 +5,10 @@ const BASE_CHAIN_ID = 8453; // Base network
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
-  const tokenAddress = params.address;
+  const resolvedParams = await params;
+  const tokenAddress = resolvedParams.address;
 
   if (!tokenAddress) {
     return NextResponse.json(
