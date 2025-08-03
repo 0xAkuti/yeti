@@ -3,29 +3,21 @@
   "builds": [
     {
       "src": "yeti-frontend2/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "orderbook-server/src/index.ts",
-      "use": "@vercel/node",
+      "use": "@vercel/next",
       "config": {
-        "includeFiles": ["orderbook-server/data/**"]
+        "includeFiles": [
+          "yeti-order-manager/**"
+        ]
       }
     }
   ],
+  "installCommand": "cd yeti-order-manager && npm install && cd ../yeti-frontend2 && npm install",
+  "buildCommand": "cd yeti-frontend2 && npm run build",
+  "outputDirectory": "yeti-frontend2/.next",
   "routes": [
-    {
-      "src": "/orderbook/(.*)",
-      "dest": "orderbook-server/src/index.ts"
-    },
     {
       "src": "/(.*)",
       "dest": "yeti-frontend2/$1"
     }
-  ],
-  "functions": {
-    "orderbook-server/src/index.ts": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  ]
 }
