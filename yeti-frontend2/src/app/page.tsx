@@ -11,18 +11,17 @@ export default function Home() {
       {/* Hero Section */}
       <main className="container mx-auto px-4">
         <div className="flex flex-col lg:flex-row items-center justify-center min-h-[calc(100vh-200px)] py-12">
-          {/* Left Content - Large Circular Graphic */}
+          {/* Left Content - Logo Icon */}
           <div className="lg:w-1/2 flex justify-center mb-12 lg:mb-0">
             <div className="relative">
-              <div className="w-96 h-96 bg-gradient-to-br from-[#1a2036] to-[#0f1419] rounded-full flex items-center justify-center border-4 border-[#006e4e] shadow-2xl transform hover:scale-105 transition-transform duration-300">
-                <div className="w-80 h-80 bg-gradient-to-br from-[#006e4e]/10 to-[#008f6a]/10 rounded-full flex items-center justify-center">
-                  <img 
-                    src="/hero-yeti.png" 
-                    alt="Yeti Hero" 
-                    className="w-72 h-72 object-contain"
-                  />
-                </div>
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="YETI Logo" 
+                className="w-96 h-96 object-contain transform hover:scale-105 transition-transform duration-300 drop-shadow-2xl"
+                style={{
+                  filter: 'drop-shadow(0 25px 50px rgba(0, 110, 78, 0.4)) drop-shadow(0 15px 30px rgba(0, 255, 136, 0.2)) drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3))'
+                }}
+              />
               {/* Floating particles */}
               <div className="absolute -top-4 -right-4 w-3 h-3 bg-[#00ff88] rounded-full animate-twinkle"></div>
               <div className="absolute top-1/4 -left-6 w-2 h-2 bg-[#006e4e] rounded-full animate-twinkle-delayed"></div>
