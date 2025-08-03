@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dstack_sdk import AsyncTappdClient, DeriveKeyResponse
 from blockchain_utils import BlockchainManager
-from contract_config import CONTRACT_ADDRESS
+from contract_config import CONTRACT_ADDRESS, TEE_SECRET
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +95,7 @@ class WebhookManager:
         """Initialize webhook secret from TEE - called once on startup"""
         if self.webhook_secret is None:
             client = AsyncTappdClient()
-            derive_key = await client.derive_key('/webhook/secret', 'hmac-signing')
+            derive_key = await client.derive_key('/yeti/hmac', TEE_SECRET)
             assert isinstance(derive_key, DeriveKeyResponse)
             self.webhook_secret = derive_key.toBytes(32)  # 32 bytes for HMAC key
             logger.info("Webhook secret derived from TEE")
@@ -126,7 +126,7 @@ class TEEProcessor:
     async def derive_user_key(webhook_id: str, user_id: str) -> Optional[str]:
         try:
             client = AsyncTappdClient()
-            derive_key = await client.derive_key(f'/webhook/{webhook_id}', user_id)
+            derive_key = await client.derive_key(f'/yeti/user/{user_id}', TEE_SECRET)
             assert isinstance(derive_key, DeriveKeyResponse)
             user_key = derive_key.toBytes(32).hex()
             logger.info(f"TEE key derived for user {user_id}")
@@ -139,7 +139,7 @@ class TEEProcessor:
     async def derive_private_key() -> str:
         try:
             client = AsyncTappdClient()
-            derive_key = await client.derive_key('/blockchain/master', 'wallet')
+            derive_key = await client.derive_key('/yeti/master', TEE_SECRET)
             assert isinstance(derive_key, DeriveKeyResponse)
             
             private_key = derive_key.toBytes(32).hex()

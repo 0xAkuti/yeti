@@ -42,6 +42,9 @@ WEBHOOK_ORACLE_ABI = [
 
 CONTRACT_ADDRESS = os.getenv("CONTRACT_ADDRESS", "0x0000000000000000000000000000000000000000")
 RPC_URL = os.getenv("RPC_URL", "http://localhost:8545")
+TEE_SECRET = os.getenv("TEE_SECRET")
+if not TEE_SECRET:
+    raise ValueError("TEE_SECRET is not set")
 
 class Action:
     NONE = 0
