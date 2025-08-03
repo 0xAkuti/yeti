@@ -38,9 +38,39 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
   const [currentPage, setCurrentPage] = useState<'order' | 'setup' | 'success'>('order');
   const [orderResult, setOrderResult] = useState<any>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Get the connected wallet
   const connectedWallet = wallets[0];
+
+  // Enhanced copy to clipboard function
+  const copyToClipboard = async (text: string, field: string) => {
+    console.log('Copy button clicked for field:', field);
+    try {
+      await navigator.clipboard.writeText(text);
+      console.log('Successfully copied to clipboard');
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 3000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      // Fallback for older browsers
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        console.log('Successfully copied using fallback method');
+        setCopiedField(field);
+        setTimeout(() => setCopiedField(null), 3000);
+      } catch (fallbackErr) {
+        console.error('Fallback copy also failed:', fallbackErr);
+      }
+    }
+  };
 
   // Get token balance and prices
   const sellTokenBalance = getTokenBalance(sellToken.address);
@@ -329,16 +359,8 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
       <div className="w-full max-w-md mx-auto">
         <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-center mb-6">
             <h2 className="text-lg font-semibold text-white">Setup TradingView</h2>
-            <button
-              onClick={() => setCurrentPage('order')}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* Copy Section */}
@@ -350,13 +372,23 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
                 <div className="text-xs text-gray-400">Step 1: Copy this URL</div>
               </div>
               <button
-                onClick={() => navigator.clipboard.writeText(webhookUrl)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center space-x-2"
+                onClick={() => copyToClipboard(webhookUrl, 'webhook')}
+                className={`w-24 px-4 py-2 text-sm rounded-lg transition-all duration-200 transform flex items-center justify-center space-x-2 font-medium ${
+                  copiedField === 'webhook'
+                    ? 'bg-green-600 text-white scale-105 shadow-lg'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 shadow-md'
+                }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span>Copy</span>
+                {copiedField === 'webhook' ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+                <span>{copiedField === 'webhook' ? 'Copied!' : 'Copy'}</span>
               </button>
             </div>
 
@@ -367,13 +399,23 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
                 <div className="text-xs text-gray-400">Step 2: Copy this message</div>
               </div>
               <button
-                onClick={() => navigator.clipboard.writeText(alertMessage)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center space-x-2"
+                onClick={() => copyToClipboard(alertMessage, 'alert')}
+                className={`w-24 px-4 py-2 text-sm rounded-lg transition-all duration-200 transform flex items-center justify-center space-x-2 font-medium ${
+                  copiedField === 'alert'
+                    ? 'bg-green-600 text-white scale-105 shadow-lg'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 shadow-md'
+                }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span>Copy</span>
+                {copiedField === 'alert' ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+                <span>{copiedField === 'alert' ? 'Copied!' : 'Copy'}</span>
               </button>
             </div>
           </div>
