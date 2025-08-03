@@ -1,23 +1,5 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "yeti-frontend2/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "includeFiles": [
-          "yeti-order-manager/**"
-        ]
-      }
-    }
-  ],
-  "installCommand": "cd yeti-order-manager && npm install && cd ../yeti-frontend2 && npm install",
-  "buildCommand": "cd yeti-frontend2 && npm run build",
+  "buildCommand": "cd yeti-frontend2 && npm install && npm run build",
   "outputDirectory": "yeti-frontend2/.next",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "yeti-frontend2/$1"
-    }
-  ]
+  "installCommand": "cd yeti-frontend2 && npm install"
 }

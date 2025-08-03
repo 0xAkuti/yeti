@@ -1,0 +1,44 @@
+{
+  "name": "yeti-order-manager",
+  "version": "1.0.0",
+  "description": "Yeti Order Manager - TradingView alerts to 1inch limit orders",
+  "main": "dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "end-to-end": "tsx src/end-to-end-test.ts",
+    "sdk-test": "tsx src/sdk-end-to-end-test.ts",
+    "sdk-test-auto": "tsx src/sdk-end-to-end-test.ts --auto-fill",
+    "watch-orders": "tsx src/order-watcher.ts",
+    "dev": "tsx src/index.ts",
+    "example": "tsx src/example-usage.ts",
+    "lint": "eslint src/**/*.ts",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["1inch", "tradingview", "limit-orders", "defi"],
+  "author": "Yeti Team",
+  "license": "MIT",
+  "dependencies": {
+    "@1inch/limit-order-sdk": "^5.0.4-rc.0",
+    "ethers": "^6.13.5",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.14.1",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "eslint": "^9.18.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.5",
+    "typescript": "^5.7.3"
+  }
+}

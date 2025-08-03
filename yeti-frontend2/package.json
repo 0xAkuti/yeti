@@ -20,7 +20,7 @@
     "react-dom": "19.1.0",
     "viem": "^2.33.2",
     "wagmi": "^2.16.1",
-    "yeti-order-manager": "file:../yeti-order-manager"
+    "yeti-order-manager": "file:./yeti-order-manager"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
