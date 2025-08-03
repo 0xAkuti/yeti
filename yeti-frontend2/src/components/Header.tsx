@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -27,7 +28,7 @@ export function Header({ showNavigation = true }: HeaderProps) {
           </div>
           
           {showNavigation && (
-            <>
+            <React.Fragment key="navigation">
               <nav className="hidden md:flex items-center justify-center flex-1 mx-12">
                 <div className="flex items-center space-x-16">
                   <Link 
@@ -59,7 +60,7 @@ export function Header({ showNavigation = true }: HeaderProps) {
               >
                 Launch App
               </Link>
-            </>
+            </React.Fragment>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useWallets } from '@privy-io/react-auth';
 import { ArrowUpDown, Settings, RefreshCw } from 'lucide-react';
@@ -248,7 +248,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
               </div>
             </div>
             {authenticated && connectedWallet && sellTokenBalance && (
-              <>
+              <React.Fragment key="sell-token-info">
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-sm text-gray-500">
                     {sellTokenPrice > 0 && sellAmount ? 
@@ -303,7 +303,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
                     }}
                   />
                 </div>
-              </>
+              </React.Fragment>
             )}
           </div>
         </div>
@@ -588,10 +588,10 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
 
   // Main render function
   return (
-    <>
+    <React.Fragment key="trading-interface">
       {currentPage === 'order' && renderOrderPage()}
       {currentPage === 'setup' && renderSetupPage()}
       {currentPage === 'success' && renderSuccessPage()}
-    </>
+    </React.Fragment>
   );
 }

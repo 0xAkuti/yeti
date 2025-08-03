@@ -6,6 +6,7 @@ import { Dashboard } from '@/components/Dashboard';
 import { PrivyGuard } from '@/components/PrivyGuard';
 import { BackgroundWrapper } from '@/components/BackgroundWrapper';
 import { Footer } from '@/components/Footer';
+import { ConnectButton } from '@/components/ConnectButton';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 
@@ -88,6 +89,16 @@ export default function App() {
                     Dashboard
                   </motion.button>
                 </nav>
+                
+                {/* Connect Wallet Button */}
+                <motion.div
+                  className="w-48"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                >
+                  <ConnectButton />
+                </motion.div>
               </motion.div>
             </div>
           </div>
