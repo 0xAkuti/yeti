@@ -118,7 +118,7 @@ export function useYetiSDK() {
     });
     
     return new YetiSDK({
-      provider,
+      provider: provider as any,
       webhookServerUrl: WEBHOOK_SERVER_URL,
       orderbookServerUrl: ORDERBOOK_SERVER_URL,
       contracts: BASE_CONTRACTS
@@ -171,7 +171,10 @@ export function useYetiSDK() {
 
       // Sign the typed data
       const signature = await walletClient.signTypedData({
-        domain: signingData.typedData.domain,
+        domain: {
+          ...signingData.typedData.domain,
+          verifyingContract: signingData.typedData.domain.verifyingContract as `0x${string}`
+        },
         types: signingData.typedData.types,
         primaryType: 'Order',
         message: signingData.typedData.message
