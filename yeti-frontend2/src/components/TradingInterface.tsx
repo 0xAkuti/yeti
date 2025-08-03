@@ -195,7 +195,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
 
   // Page 1: Order Creation
   const renderOrderPage = () => (
-    <div className="w-full max-w-md mx-auto">
+    <div className="flex justify-center w-full">
       <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -396,7 +396,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
     const alertMessage = orderResult.webhook?.buyMessage || '';
 
     return (
-      <div className="w-full max-w-md mx-auto">
+      <div className="flex justify-center w-full">
         <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
           {/* Step 1 Header */}
           <div className="mb-4 text-center">
@@ -533,7 +533,7 @@ export function TradingInterface({ onNavigateToDashboard }: TradingInterfaceProp
 
   // Page 3: Success Message
   const renderSuccessPage = () => (
-    <div className="w-full max-w-md mx-auto">
+    <div className="flex justify-center w-full">
       <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700 w-96 h-[600px] flex flex-col">
         {/* Success Icon */}
         <div className="text-center mb-6">
